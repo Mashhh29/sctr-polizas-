@@ -1,0 +1,2673 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SCTR Gestión — Sistema de Planillas</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --pri:#003366;--pri-light:#004d99;--pri-dark:#001f44;
+  --acc:#E8401C;--acc-light:#f05a33;
+  --bg:#f0f4fb;--card:#ffffff;
+  --border:rgba(0,0,0,0.09);--border2:rgba(0,0,0,0.15);
+  --text:#1a2233;--text2:#5a6578;--text3:#8a94a6;
+  --success:#1a7a4a;--success-bg:#e6f4ec;--success-border:#a8d5bc;
+  --warning:#a85800;--warning-bg:#fff3e0;--warning-border:#f5c87a;
+  --danger:#b52a2a;--danger-bg:#fdecea;--danger-border:#f0aaaa;
+  --info:#1055a8;--info-bg:#e3eeff;--info-border:#90b8f0;
+  --font:'IBM Plex Sans',system-ui,sans-serif;
+  --font-mono:'IBM Plex Mono',monospace;
+  --radius:10px;--radius-lg:14px;--radius-xl:20px;
+  --shadow:0 2px 12px rgba(0,30,80,0.08);
+  --shadow-lg:0 8px 32px rgba(0,30,80,0.14);
+}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;line-height:1.5;}
+
+/* PAGE ROUTER */
+.page{display:none;}
+.page.active{display:flex;flex-direction:column;min-height:100vh;}
+
+/* LOGIN */
+.login-wrap{min-height:100vh;display:flex;background:linear-gradient(135deg,#001028 0%,#002255 50%,#003d88 100%);position:relative;overflow:hidden;}
+.login-geo{position:absolute;inset:0;pointer-events:none;overflow:hidden;}
+.login-geo::before{content:'';position:absolute;width:600px;height:600px;border-radius:50%;border:1px solid rgba(255,255,255,0.06);top:-200px;left:-200px;}
+.login-geo::after{content:'';position:absolute;width:400px;height:400px;border-radius:50%;border:1px solid rgba(255,255,255,0.05);bottom:-100px;right:80px;}
+.login-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.04) 1px,transparent 1px);background-size:40px 40px;mask-image:linear-gradient(to bottom,transparent,rgba(0,0,0,0.6) 30%,rgba(0,0,0,0.6) 70%,transparent);}
+.login-left{flex:1;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;padding:4rem 3.5rem;color:#fff;position:relative;z-index:1;max-width:520px;}
+.brand{display:flex;align-items:center;gap:14px;margin-bottom:3rem;}
+.brand-mark{width:52px;height:52px;background:var(--acc);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff;letter-spacing:-0.5px;font-family:var(--font-mono);}
+.brand-name{font-size:22px;font-weight:700;letter-spacing:0.3px;}
+.brand-tagline{font-size:11px;opacity:0.55;letter-spacing:2.5px;text-transform:uppercase;margin-top:3px;}
+.login-headline{font-size:38px;font-weight:700;line-height:1.2;margin-bottom:1rem;letter-spacing:-0.5px;}
+.login-headline em{color:var(--acc);font-style:normal;}
+.login-desc{font-size:15px;opacity:0.65;line-height:1.7;max-width:380px;margin-bottom:2.5rem;}
+.feature-list{display:flex;flex-direction:column;gap:10px;}
+.feature-item{display:flex;align-items:center;gap:10px;font-size:13px;opacity:0.75;}
+.feature-dot{width:6px;height:6px;border-radius:50%;background:var(--acc);flex-shrink:0;}
+.login-right{width:460px;background:#fff;display:flex;align-items:center;justify-content:center;padding:3rem 2.5rem;position:relative;z-index:1;overflow-y:auto;}
+.login-card{width:100%;}
+.login-title{font-size:24px;font-weight:700;color:var(--pri);margin-bottom:5px;letter-spacing:-0.3px;}
+.login-subtitle{font-size:13px;color:var(--text2);margin-bottom:2rem;}
+
+/* FORM */
+.form-group{margin-bottom:1rem;}
+.form-label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.6px;display:block;margin-bottom:5px;}
+.form-input,.form-select{width:100%;padding:10px 13px;border:1.5px solid var(--border2);border-radius:8px;font-size:14px;color:var(--text);background:#fafbfd;font-family:var(--font);transition:border-color 0.15s,background 0.15s;}
+.form-input:focus,.form-select:focus{outline:none;border-color:var(--pri-light);background:#fff;box-shadow:0 0 0 3px rgba(0,77,153,0.1);}
+.form-input::placeholder{color:var(--text3);}
+.form-select{cursor:pointer;}
+textarea.form-input{resize:vertical;min-height:80px;}
+.form-hint{font-size:12px;color:var(--text3);margin-top:4px;}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600;border:none;cursor:pointer;font-family:var(--font);transition:all 0.15s;letter-spacing:0.2px;white-space:nowrap;}
+.btn:active{transform:scale(0.98);}
+.btn:disabled{opacity:0.5;cursor:not-allowed;}
+.btn-primary{background:var(--pri);color:#fff;}
+.btn-primary:hover{background:var(--pri-light);}
+.btn-secondary{background:transparent;color:var(--pri);border:1.5px solid var(--pri);}
+.btn-secondary:hover{background:#e8f0fb;}
+.btn-acc{background:var(--acc);color:#fff;}
+.btn-acc:hover{background:var(--acc-light);}
+.btn-ghost{background:#f0f4fb;color:var(--text2);}
+.btn-ghost:hover{background:#e2e8f5;}
+.btn-danger{background:var(--danger-bg);color:var(--danger);border:1px solid var(--danger-border);}
+.btn-danger:hover{background:var(--danger);color:#fff;}
+.btn-sm{padding:5px 12px;font-size:12px;border-radius:6px;}
+.btn-xs{padding:3px 9px;font-size:11px;border-radius:5px;}
+.btn-icon{width:32px;height:32px;padding:0;border-radius:7px;}
+.btn-block{width:100%;}
+
+/* TOPBAR */
+.topbar{background:var(--pri);color:#fff;padding:0 1.5rem;height:58px;display:flex;align-items:center;gap:0.8rem;position:sticky;top:0;z-index:100;border-bottom:1px solid rgba(255,255,255,0.08);}
+.topbar-brand{display:flex;align-items:center;gap:10px;margin-right:1rem;}
+.topbar-mark{width:34px;height:34px;background:var(--acc);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;font-family:var(--font-mono);}
+.topbar-name{font-size:15px;font-weight:700;letter-spacing:0.2px;}
+.topbar-divider{width:1px;height:24px;background:rgba(255,255,255,0.15);margin:0 8px;}
+.nav-btn{padding:7px 14px;border-radius:7px;font-size:13px;font-weight:500;border:none;cursor:pointer;background:transparent;color:rgba(255,255,255,0.7);font-family:var(--font);transition:all 0.15s;}
+.nav-btn:hover,.nav-btn.active{background:rgba(255,255,255,0.14);color:#fff;}
+.nav-btn.active{font-weight:600;}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px;}
+.user-badge{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.15);border-radius:20px;padding:4px 12px 4px 6px;}
+.user-avatar{width:28px;height:28px;background:var(--acc);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;}
+.user-name{font-size:12px;color:rgba(255,255,255,0.85);}
+.btn-logout{padding:6px 14px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.18);border-radius:7px;color:rgba(255,255,255,0.8);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font);transition:all 0.15s;}
+.btn-logout:hover{background:rgba(255,255,255,0.18);color:#fff;}
+
+/* MAIN */
+.main{flex:1;padding:1.5rem;max-width:1240px;margin:0 auto;width:100%;}
+.view{display:none;}
+.view.active{display:block;}
+.page-hdr{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1.3rem;gap:12px;flex-wrap:wrap;}
+.page-title{font-size:20px;font-weight:700;color:var(--pri);letter-spacing:-0.3px;}
+.page-sub{font-size:13px;color:var(--text2);margin-top:2px;}
+
+/* CARDS */
+.card{background:var(--card);border-radius:var(--radius-lg);border:1px solid var(--border);padding:1.3rem 1.5rem;margin-bottom:1rem;box-shadow:var(--shadow);}
+.card-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.1rem;padding-bottom:0.9rem;border-bottom:1px solid var(--border);}
+.card-title{font-size:14px;font-weight:700;color:var(--pri);}
+.card-sub{font-size:12px;color:var(--text2);margin-top:2px;}
+
+/* KPI */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:1.3rem;}
+.kpi{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.1rem;box-shadow:var(--shadow);}
+.kpi-num{font-size:28px;font-weight:700;line-height:1;margin-bottom:4px;font-family:var(--font-mono);color:var(--pri);}
+.kpi-label{font-size:12px;color:var(--text2);font-weight:500;}
+.kpi-blue .kpi-num{color:var(--info);}
+.kpi-green .kpi-num{color:var(--success);}
+.kpi-orange .kpi-num{color:var(--warning);}
+.kpi-red .kpi-num{color:var(--danger);}
+
+/* TABS */
+.tabs{display:flex;gap:3px;background:#e8eef7;border-radius:12px;padding:4px;margin-bottom:1.2rem;width:fit-content;border:1px solid var(--border);flex-wrap:wrap;}
+.tab{padding:7px 18px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;border:none;background:transparent;color:var(--text2);font-family:var(--font);transition:all 0.15s;}
+.tab.active{background:var(--pri);color:#fff;box-shadow:0 2px 8px rgba(0,51,102,0.25);}
+.tab-pane{display:none;}
+.tab-pane.active{display:block;}
+
+/* TABLES */
+.tbl-wrap{overflow-x:auto;margin:0 -0.2rem;}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+thead th{background:#f5f7fc;color:var(--text2);font-size:11px;text-transform:uppercase;letter-spacing:0.5px;padding:10px 13px;text-align:left;font-weight:600;border-bottom:1.5px solid var(--border);white-space:nowrap;}
+tbody td{padding:11px 13px;border-bottom:1px solid #f2f4f8;color:var(--text);vertical-align:middle;}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover td{background:#f8fafd;}
+.td-mono{font-family:var(--font-mono);font-size:12px;}
+
+/* PILLS */
+.pill{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:0.2px;white-space:nowrap;}
+.pill-green{background:var(--success-bg);color:var(--success);border:1px solid var(--success-border);}
+.pill-red{background:var(--danger-bg);color:var(--danger);border:1px solid var(--danger-border);}
+.pill-orange{background:var(--warning-bg);color:var(--warning);border:1px solid var(--warning-border);}
+.pill-blue{background:var(--info-bg);color:var(--info);border:1px solid var(--info-border);}
+.pill-gray{background:#f0f2f5;color:#6b7a90;border:1px solid #d8dde6;}
+.pill-pri{background:#e3eeff;color:var(--pri);border:1px solid #b0c8f0;}
+
+/* ALERTS */
+.alert{padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:1rem;display:flex;align-items:flex-start;gap:10px;}
+.alert-icon{flex-shrink:0;font-size:15px;}
+.alert-info{background:var(--info-bg);color:var(--info);border:1px solid var(--info-border);}
+.alert-success{background:var(--success-bg);color:var(--success);border:1px solid var(--success-border);}
+.alert-warn{background:var(--warning-bg);color:var(--warning);border:1px solid var(--warning-border);}
+.alert-danger{background:var(--danger-bg);color:var(--danger);border:1px solid var(--danger-border);}
+
+/* FORM SECTIONS */
+.fs{margin-bottom:1.4rem;}
+.fs-title{font-size:11px;font-weight:700;color:var(--pri);text-transform:uppercase;letter-spacing:0.7px;margin-bottom:0.9rem;padding-bottom:6px;border-bottom:2px solid var(--acc);display:inline-block;}
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;}
+.form-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.form-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+
+/* SEARCH */
+.search-bar{display:flex;gap:8px;margin-bottom:1.1rem;flex-wrap:wrap;align-items:center;}
+.search-input{flex:1;min-width:180px;padding:9px 13px;border:1.5px solid var(--border2);border-radius:8px;font-size:13px;font-family:var(--font);background:#fff;}
+.search-input:focus{outline:none;border-color:var(--pri-light);}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,15,40,0.55);z-index:500;display:none;align-items:center;justify-content:center;padding:1.5rem;backdrop-filter:blur(2px);}
+.modal-overlay.open{display:flex;}
+.modal{background:#fff;border-radius:var(--radius-xl);width:100%;max-width:560px;padding:1.8rem;box-shadow:0 24px 64px rgba(0,0,0,0.2);animation:modalIn 0.2s ease;max-height:90vh;overflow-y:auto;}
+.modal-lg{max-width:780px;}
+@keyframes modalIn{from{transform:translateY(16px);opacity:0;}to{transform:none;opacity:1;}}
+.modal-title{font-size:18px;font-weight:700;color:var(--pri);letter-spacing:-0.2px;margin-bottom:4px;}
+.modal-sub{font-size:13px;color:var(--text2);margin-bottom:1.3rem;}
+.modal-ftr{display:flex;justify-content:flex-end;gap:8px;margin-top:1.3rem;padding-top:1rem;border-top:1px solid var(--border);}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;right:24px;z-index:999;padding:13px 20px;border-radius:11px;font-size:14px;font-weight:600;display:none;align-items:center;gap:8px;animation:toastIn 0.25s ease;box-shadow:0 6px 24px rgba(0,0,0,0.18);}
+.toast.show{display:flex;}
+@keyframes toastIn{from{transform:translateY(10px);opacity:0;}to{transform:none;opacity:1;}}
+.toast-success{background:#1a7a4a;color:#fff;}
+.toast-info{background:var(--pri);color:#fff;}
+.toast-error{background:var(--danger);color:#fff;}
+
+/* MISC */
+.divider{height:1px;background:var(--border);margin:1rem 0;}
+.flex{display:flex;}.items-center{align-items:center;}.gap-6{gap:6px;}.gap-8{gap:8px;}.gap-10{gap:10px;}.gap-12{gap:12px;}.ml-auto{margin-left:auto;}
+.mt-8{margin-top:8px;}.mt-12{margin-top:12px;}.mt-16{margin-top:16px;}.mb-12{margin-bottom:12px;}.mb-16{margin-bottom:16px;}
+.text-sm{font-size:13px;}.text-xs{font-size:12px;}.text-muted{color:var(--text2);}
+.font-bold{font-weight:700;}.font-600{font-weight:600;}
+.w-full{width:100%;}.text-center{text-align:center;}
+.lnk{color:var(--pri);cursor:pointer;font-weight:600;text-decoration:none;}
+.lnk:hover{text-decoration:underline;}
+.login-footer{margin-top:1.5rem;text-align:center;font-size:12px;color:var(--text2);}
+.poliza-indicator{display:flex;align-items:center;gap:8px;background:#f0f4fb;border:1px solid var(--border);border-radius:8px;padding:8px 12px;margin-bottom:1rem;flex-wrap:wrap;}
+.pi-label{font-size:11px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;}
+.pi-value{font-size:13px;font-weight:600;color:var(--pri);font-family:var(--font-mono);}
+.tbl-input{padding:5px 8px;border:1.5px solid var(--border2);border-radius:6px;font-size:13px;font-family:var(--font);background:#fafbfd;color:var(--text);width:100%;}
+.tbl-input:focus{outline:none;border-color:var(--pri-light);}
+.empty-state{text-align:center;padding:3rem 1rem;color:var(--text2);}
+.empty-icon{font-size:40px;margin-bottom:0.8rem;opacity:0.4;}
+.empty-text{font-size:14px;}
+.live-dot{display:inline-block;width:7px;height:7px;background:var(--success);border-radius:50%;animation:pulse 2s infinite;margin-right:5px;vertical-align:middle;}
+@keyframes pulse{0%{opacity:1;}50%{opacity:0.4;}100%{opacity:1;}}
+.import-zone{border:2px dashed var(--border2);border-radius:12px;padding:1.6rem;text-align:center;background:#fafbfd;transition:border-color 0.15s,background 0.15s;cursor:pointer;}
+.import-zone:hover{border-color:var(--pri);background:#f0f4fb;}
+.import-zone.dragover{border-color:var(--acc);background:#fff3e0;}
+.summary-row{display:flex;gap:12px;flex-wrap:wrap;margin-top:1rem;}
+.summary-item{flex:1;min-width:120px;background:#f5f7fc;border:1px solid var(--border);border-radius:8px;padding:10px 14px;}
+.summary-item-num{font-size:22px;font-weight:700;font-family:var(--font-mono);}
+.summary-item-lbl{font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;font-weight:600;}
+
+/* RESPONSIVE */
+@media(max-width:768px){
+  .login-left{display:none;}
+  .login-right{width:100%;}
+  .form-grid-3,.form-grid-2{grid-template-columns:1fr;}
+  .topbar-name{display:none;}
+  .main{padding:1rem;}
+  .modal{padding:1.3rem;}
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════ LOGIN ═══════════════════════════ -->
+<div id="pg-login" class="page active">
+  <div class="login-wrap">
+    <div class="login-geo"></div>
+    <div class="login-grid"></div>
+    <div class="login-left">
+      <div class="brand">
+        <div class="brand-mark">SC</div>
+        <div>
+          <div class="brand-name">SCTR Gestión</div>
+          <div class="brand-tagline">Sistema de Planillas</div>
+        </div>
+      </div>
+      <div class="login-headline">Gestión integral<br>de planillas <em>SCTR</em></div>
+      <div class="login-desc">Administra de forma segura y eficiente las renovaciones, inclusiones y exclusiones de trabajadores para tu seguro complementario de trabajo de riesgo.</div>
+      <div class="feature-list">
+        <div class="feature-item"><div class="feature-dot"></div> Gestión de pólizas Salud y Pensión SCTR</div>
+        <div class="feature-item"><div class="feature-dot"></div> Inclusiones y exclusiones en línea</div>
+        <div class="feature-item"><div class="feature-dot"></div> Importación masiva desde Excel</div>
+        <div class="feature-item"><div class="feature-dot"></div> Filtrado y vista por empresa vinculante</div>
+      </div>
+    </div>
+    <div class="login-right">
+      <div class="login-card">
+        <div class="login-title">Iniciar sesión</div>
+        <div class="login-subtitle">Ingresa tus credenciales para acceder</div>
+
+        <div class="form-group">
+          <label class="form-label">Correo electrónico</label>
+          <input class="form-input" id="l-user" type="email" placeholder="usuario@empresa.com" autocomplete="username"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Contraseña</label>
+          <input class="form-input" id="l-pass" type="password" placeholder="••••••••" autocomplete="current-password"/>
+        </div>
+        <div id="l-error" style="display:none;font-size:12px;color:var(--danger);background:var(--danger-bg);border:1px solid var(--danger-border);border-radius:7px;padding:8px 12px;margin-bottom:0.8rem;">Usuario o contraseña incorrectos.</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:1.2rem;">
+          <input type="checkbox" id="l-remember" style="width:15px;height:15px;accent-color:var(--pri);"/>
+          <label for="l-remember" style="font-size:13px;color:var(--text2);cursor:pointer;">Recordar sesión</label>
+        </div>
+        <button class="btn btn-primary btn-block" onclick="doLogin()">Ingresar al sistema</button>
+        <div class="login-footer">
+          Sólo el administrador puede crear nuevos usuarios desde el panel de Usuarios.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ APP ═══════════════════════════ -->
+<div id="pg-app" class="page">
+  <header class="topbar">
+    <div class="topbar-brand">
+      <div class="topbar-mark">SC</div>
+      <div class="topbar-name">SCTR Gestión</div>
+    </div>
+    <div class="topbar-divider"></div>
+    <button class="nav-btn active" data-view="dashboard" onclick="setView('dashboard')">Dashboard</button>
+    <button class="nav-btn" data-view="polizas" onclick="setView('polizas')">Pólizas</button>
+    <button class="nav-btn" data-view="empresas" onclick="setView('empresas')" id="nav-empresas">Empresas</button>
+    <button class="nav-btn" data-view="usuarios" onclick="setView('usuarios')" id="nav-usuarios">Usuarios</button>
+    <button class="nav-btn" data-view="datos" onclick="setView('datos')" id="nav-datos">Datos</button>
+    <button class="nav-btn" data-view="datos" onclick="setView('datos')" id="nav-datos">Datos</button>
+    <div class="topbar-right">
+      <span style="font-size:11px;color:rgba(255,255,255,0.55);"><span class="live-dot"></span>En vivo</span>
+      <div class="user-badge">
+        <div class="user-avatar" id="user-avatar">??</div>
+        <div>
+          <div class="user-name" id="user-name">—</div>
+          <div style="font-size:10px;color:rgba(255,255,255,0.55);" id="user-role">—</div>
+        </div>
+      </div>
+      <button class="btn-logout" onclick="doLogout()">Salir</button>
+    </div>
+  </header>
+
+  <main class="main">
+    <!-- DASHBOARD -->
+    <section id="view-dashboard" class="view active">
+      <div class="page-hdr">
+        <div>
+          <div class="page-title" id="dash-greeting">Dashboard</div>
+          <div class="page-sub" id="dash-sub">Resumen general del sistema</div>
+        </div>
+      </div>
+      <div class="kpi-grid">
+        <div class="kpi"><div class="kpi-num" id="k-polizas-vig">0</div><div class="kpi-label">Pólizas vigentes</div></div>
+        <div class="kpi kpi-orange"><div class="kpi-num" id="k-por-vencer">0</div><div class="kpi-label">Por vencer (30 días)</div></div>
+        <div class="kpi kpi-blue"><div class="kpi-num" id="k-trabajadores">0</div><div class="kpi-label">Trabajadores activos</div></div>
+        <div class="kpi"><div class="kpi-num" id="k-planilla">S/ 0</div><div class="kpi-label">Planilla total</div></div>
+        <div class="kpi kpi-green"><div class="kpi-num" id="k-prima">S/ 0</div><div class="kpi-label">Prima mensual total</div></div>
+      </div>
+
+      <div class="card">
+        <div class="card-hdr">
+          <div>
+            <div class="card-title">Últimas pólizas</div>
+            <div class="card-sub">Pólizas más recientes</div>
+          </div>
+        </div>
+        <div class="tbl-wrap" id="dash-polizas-wrap"></div>
+      </div>
+
+      <div class="card" id="dash-empresas-card">
+        <div class="card-hdr">
+          <div>
+            <div class="card-title">Empresas registradas</div>
+            <div class="card-sub" id="dash-emp-sub">—</div>
+          </div>
+        </div>
+        <div class="tbl-wrap" id="dash-empresas-wrap"></div>
+      </div>
+    </section>
+
+    <!-- POLIZAS -->
+    <section id="view-polizas" class="view">
+      <div id="polizas-list">
+        <div class="page-hdr">
+          <div>
+            <div class="page-title">Pólizas SCTR</div>
+            <div class="page-sub" id="pol-sub">Gestión de pólizas</div>
+          </div>
+          <button class="btn btn-acc" id="btn-nueva-poliza" onclick="abrirNuevaPoliza()">+ Nueva póliza</button>
+        </div>
+        <div class="card">
+          <div class="search-bar">
+            <select class="form-select" id="filtro-empresa" style="max-width:280px;" onchange="renderPolizas()">
+              <option value="">Todas las empresas</option>
+            </select>
+            <input class="search-input" id="filtro-busqueda" placeholder="Buscar por número, RUC, aseguradora..." oninput="renderPolizas()"/>
+          </div>
+          <div class="tbl-wrap" id="polizas-tbl-wrap"></div>
+        </div>
+      </div>
+
+      <div id="polizas-detalle" style="display:none;"></div>
+    </section>
+
+    <!-- EMPRESAS -->
+    <section id="view-empresas" class="view">
+      <div class="page-hdr">
+        <div>
+          <div class="page-title">Empresas vinculantes</div>
+          <div class="page-sub">Registra empresas contratantes para asignarles pólizas</div>
+        </div>
+        <button class="btn btn-acc" onclick="abrirNuevaEmpresa()">+ Nueva empresa</button>
+      </div>
+      <div class="card">
+        <div class="tbl-wrap" id="empresas-tbl-wrap"></div>
+      </div>
+    </section>
+
+    <!-- USUARIOS -->
+    <section id="view-usuarios" class="view">
+      <div class="page-hdr">
+        <div>
+          <div class="page-title">Usuarios del sistema</div>
+          <div class="page-sub">Solo el administrador puede crear y gestionar usuarios</div>
+        </div>
+        <button class="btn btn-acc" onclick="abrirNuevoUsuario()">+ Nuevo usuario</button>
+      </div>
+      <div class="card">
+        <div class="tbl-wrap" id="usuarios-tbl-wrap"></div>
+      </div>
+    </section>
+
+    <!-- DATOS (catálogos maestros) -->
+    <section id="view-datos" class="view">
+      <div class="page-hdr">
+        <div>
+          <div class="page-title">Datos maestros</div>
+          <div class="page-sub">Catálogos del sistema: aseguradoras, niveles de riesgo, cargos, sedes, motivos, etc.</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="tabs" id="datos-tabs"></div>
+        <div id="datos-tab-content"></div>
+      </div>
+    </section>
+
+    <!-- DATOS MAESTROS -->
+  </main>
+</div>
+
+<!-- MODAL -->
+<div id="modal-overlay" class="modal-overlay" onclick="if(event.target===this)cerrarModal()">
+  <div class="modal" id="modal-content"></div>
+</div>
+
+<!-- TOAST -->
+<div id="toast" class="toast"></div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════
+   CONFIGURACIÓN SUPABASE
+   ═══════════════════════════════════════════════════════════════════════ */
+const SUPABASE_URL = 'https://dozirxxqjjnulnnslyha.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRvemlyeHhxampudWxubnNseWhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcxNjU2ODEsImV4cCI6MjA5Mjc0MTY4MX0.5PcijyAljOnliOhY7NYwa6CLI_lifRKOB6-Bgnx28cE';
+
+/* ═══════════════════════════════════════════════════════════════════════
+   CONFIGURACIÓN TELEGRAM
+   La configuración (token + chat_id) se guarda en la tabla `config` de Supabase
+   y se gestiona desde el menú "Datos" → "⚙️ Configurar Telegram"
+   ═══════════════════════════════════════════════════════════════════════ */
+
+async function notificarTelegram(mensaje){
+  const cfg = (cache.config && cache.config[0]) || {};
+  if(!cfg.notificaciones_activas || !cfg.telegram_token || !cfg.telegram_chat_id) return;
+  try{
+    await fetch(`https://api.telegram.org/bot${cfg.telegram_token}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: cfg.telegram_chat_id,
+        text: mensaje,
+        parse_mode: 'Markdown',
+      }),
+    });
+  }catch(e){ console.warn('Telegram falló:', e); }
+}
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const SESSION_KEY = 'sctr_session_v1';
+
+/* ═══════════════════════════════════════════════════════════════════════
+   PERMISOS POR DEFECTO
+   ═══════════════════════════════════════════════════════════════════════ */
+const PERMISOS_LIST = [
+  { key: 'ver_polizas', label: 'Ver pólizas', desc: 'Acceso a la lista y detalle' },
+  { key: 'crear_polizas', label: 'Crear pólizas', desc: 'Solo para administradores' },
+  { key: 'renovar_polizas', label: 'Renovar pólizas', desc: 'Renovar vigencia y prima' },
+  { key: 'incluir_trabajadores', label: 'Incluir trabajadores', desc: 'Agregar asegurados' },
+  { key: 'excluir_trabajadores', label: 'Excluir trabajadores', desc: 'Dar de baja asegurados' },
+  { key: 'ver_primas', label: 'Ver primas y tasas', desc: 'Mostrar datos económicos' },
+  { key: 'importar_excel', label: 'Importar desde Excel', desc: 'Subir archivos masivos' },
+  { key: 'exportar_reportes', label: 'Exportar reportes', desc: 'Descargar Excel/CSV' },
+];
+
+const PERMISOS_DEFAULT_ADMIN = {
+  ver_polizas:true, crear_polizas:true, renovar_polizas:true,
+  incluir_trabajadores:true, excluir_trabajadores:true, ver_primas:true,
+  importar_excel:true, exportar_reportes:true,
+};
+const PERMISOS_DEFAULT_EMPRESA = {
+  ver_polizas:true, crear_polizas:false, renovar_polizas:false,
+  incluir_trabajadores:true, excluir_trabajadores:true, ver_primas:true,
+  importar_excel:true, exportar_reportes:true,
+};
+
+function tienePermiso(perm){
+  if(!session) return false;
+  if(session.rol === 'administrador') return true; // Admin siempre todo
+  return !!(session.permisos && session.permisos[perm]);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   CACHE LOCAL — espejo de Supabase actualizado por Realtime
+   ═══════════════════════════════════════════════════════════════════════ */
+const cache = {
+  empresas: [],
+  usuarios: [],
+  polizas: [],
+  asegurados: [],
+  movimientos: [],
+  catalogos: [],
+  config: [],
+  loaded: false,
+};
+
+function uid(){ return crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2)+Date.now().toString(36); }
+
+// Helper: opciones de un catálogo (filtrar por tipo, ordenar)
+function catalogo(tipo){
+  return cache.catalogos
+    .filter(c => c.tipo === tipo && c.activo)
+    .sort((a,b) => (a.orden||0) - (b.orden||0));
+}
+function catalogoOptions(tipo, selected){
+  return catalogo(tipo).map(c =>
+    `<option value="${escapeHtml(c.valor)}" ${selected===c.valor?'selected':''}>${escapeHtml(c.valor)}</option>`
+  ).join('');
+}
+
+async function cargarTodo(){
+  try{
+    const [emps, usrs, pols, asgs, mvs, cats, cfg] = await Promise.all([
+      sb.from('empresas').select('*').order('razon_social'),
+      sb.from('usuarios').select('*'),
+      sb.from('polizas').select('*').order('created_at', {ascending:false}),
+      sb.from('asegurados').select('*'),
+      sb.from('movimientos').select('*').order('created_at', {ascending:false}).limit(500),
+      sb.from('catalogos').select('*').order('tipo').order('orden'),
+      sb.from('config').select('*').limit(1),
+    ]);
+    if(emps.error) throw emps.error;
+    if(usrs.error) throw usrs.error;
+    if(pols.error) throw pols.error;
+    if(asgs.error) throw asgs.error;
+    if(mvs.error) throw mvs.error;
+    if(cats.error) throw cats.error;
+    cache.empresas = emps.data || [];
+    cache.usuarios = usrs.data || [];
+    cache.polizas = pols.data || [];
+    cache.asegurados = asgs.data || [];
+    cache.movimientos = mvs.data || [];
+    cache.catalogos = cats.data || [];
+    cache.config = cfg.data || [];
+    cache.loaded = true;
+    refreshAll();
+  }catch(err){
+    console.error('Error cargando datos:', err);
+    toast('Error de conexión: ' + err.message, 'error');
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   REALTIME — sincronización en vivo entre usuarios
+   ═══════════════════════════════════════════════════════════════════════ */
+let realtimeChannel = null;
+
+function activarRealtime(){
+  if(realtimeChannel) return;
+  realtimeChannel = sb.channel('sctr-changes')
+    .on('postgres_changes', { event:'*', schema:'public', table:'empresas' }, p => aplicarCambio('empresas', p))
+    .on('postgres_changes', { event:'*', schema:'public', table:'usuarios' }, p => aplicarCambio('usuarios', p))
+    .on('postgres_changes', { event:'*', schema:'public', table:'polizas' }, p => aplicarCambio('polizas', p))
+    .on('postgres_changes', { event:'*', schema:'public', table:'asegurados' }, p => aplicarCambio('asegurados', p))
+    .on('postgres_changes', { event:'*', schema:'public', table:'movimientos' }, p => aplicarCambio('movimientos', p))
+    .on('postgres_changes', { event:'*', schema:'public', table:'catalogos' }, p => aplicarCambio('catalogos', p))
+    .on('postgres_changes', { event:'*', schema:'public', table:'config' }, p => aplicarCambio('config', p))
+    .subscribe();
+}
+function desactivarRealtime(){
+  if(realtimeChannel){
+    sb.removeChannel(realtimeChannel);
+    realtimeChannel = null;
+  }
+}
+function aplicarCambio(tabla, payload){
+  const arr = cache[tabla];
+  if(!arr) return;
+  if(payload.eventType === 'INSERT'){
+    if(!arr.find(x => x.id === payload.new.id)) arr.unshift(payload.new);
+  } else if(payload.eventType === 'UPDATE'){
+    const idx = arr.findIndex(x => x.id === payload.new.id);
+    if(idx >= 0) arr[idx] = payload.new;
+    else arr.unshift(payload.new);
+  } else if(payload.eventType === 'DELETE'){
+    const idx = arr.findIndex(x => x.id === payload.old.id);
+    if(idx >= 0) arr.splice(idx, 1);
+  }
+  refreshAll();
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   HELPERS DE CACHE (sustituyen al antiguo db())
+   ═══════════════════════════════════════════════════════════════════════ */
+function db(){ return cache; }
+function commit(){ refreshAll(); }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   CÁLCULOS DE PRIMA EN VIVO — Punto 4
+   prima_mensual = planilla_total × tasa / 100
+   Se recalcula en vivo con los asegurados activos actuales
+   ═══════════════════════════════════════════════════════════════════════ */
+function calcularPrimaPoliza(poliza){
+  if(!poliza) return { planilla_total: 0, prima_mensual: 0, num_activos: 0 };
+  const activos = cache.asegurados.filter(a => a.poliza_id === poliza.id && a.estado === 'activo');
+  const planilla = activos.reduce((s, a) => s + parseFloat(a.sueldo || 0), 0);
+  const tasa = parseFloat(poliza.tasa || 0);
+  const prima = planilla * tasa / 100;
+  return {
+    planilla_total: planilla,
+    prima_mensual: prima,
+    num_activos: activos.length,
+  };
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   CÓDIGO DE OPERACIÓN — Punto 3
+   Formato: OP-YYYYMMDD-NNNN  (ej: OP-20260429-0001)
+   ═══════════════════════════════════════════════════════════════════════ */
+function generarCodigoOp(){
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  const dd = String(d.getDate()).padStart(2,'0');
+  const fechaStr = `${yyyy}${mm}${dd}`;
+  const hoy = (cache.movimientos || []).filter(m => {
+    if(!m.created_at) return false;
+    const md = new Date(m.created_at);
+    return md.getFullYear() === d.getFullYear() && md.getMonth() === d.getMonth() && md.getDate() === d.getDate();
+  });
+  const num = String(hoy.length + 1).padStart(4, '0');
+  return `OP-${fechaStr}-${num}`;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   PRIMA EN VIVO + PLANILLA TOTAL
+   ═══════════════════════════════════════════════════════════════════════ */
+function asegActivosPoliza(poliza_id){
+  return cache.asegurados.filter(a => a.poliza_id === poliza_id && a.estado === 'activo');
+}
+function planillaTotalPoliza(poliza_id){
+  return asegActivosPoliza(poliza_id).reduce((s,a) => s + parseFloat(a.sueldo||0), 0);
+}
+function primaCalculadaPoliza(poliza){
+  if(!poliza) return 0;
+  const planilla = planillaTotalPoliza(poliza.id);
+  const tasa = parseFloat(poliza.tasa || 0);
+  return planilla * tasa / 100;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   CÓDIGO DE OPERACIÓN + REGISTRO DE MOVIMIENTO
+   Genera un código vía RPC y crea el registro en movimientos.
+   También notifica vía Telegram.
+   ═══════════════════════════════════════════════════════════════════════ */
+async function generarCodigoOp(){
+  try{
+    const { data, error } = await sb.rpc('generar_codigo_op');
+    if(error) throw error;
+    return data;
+  }catch(e){
+    // Fallback local si la RPC no existe
+    const ts = new Date();
+    const yyyymmdd = ts.getFullYear() + String(ts.getMonth()+1).padStart(2,'0') + String(ts.getDate()).padStart(2,'0');
+    const seq = String(Date.now()).slice(-6);
+    return `OP-${yyyymmdd}-${seq}`;
+  }
+}
+
+async function registrarMovimiento(poliza_id, tipo, detalle){
+  const codigo = generarCodigoOp();
+  const { error } = await sb.from('movimientos').insert({
+    poliza_id, usuario_id: session.id, tipo, detalle, codigo_op: codigo,
+  });
+  if(error) console.error('Error guardando movimiento:', error);
+
+  // Construir mensaje de Telegram (Markdown)
+  const p = cache.polizas.find(x => x.id === poliza_id);
+  const e = p ? cache.empresas.find(x => x.id === p.empresa_id) : null;
+  const tiposLabel = {
+    creacion: '📄 Nueva póliza',
+    inclusion: '➕ Inclusión',
+    exclusion: '➖ Exclusión',
+    renovacion: '🔄 Renovación',
+  };
+  const lineas = [
+    `*${tiposLabel[tipo] || tipo.toUpperCase()}*`,
+    `\`${codigo}\``,
+    p ? `Póliza: *${p.numero}*` : '',
+    e ? `Empresa: ${e.razon_social}` : '',
+    `Usuario: ${session.nombre} ${session.apellido||''}`,
+    `Fecha: ${new Date().toLocaleString('es-PE')}`,
+  ];
+  if(detalle){
+    if(detalle.bulk) lineas.push(`Lote: ${detalle.insertados||0} nuevos · ${detalle.reactivados||0} reactivados · ${detalle.duplicados||0} omitidos`);
+    else if(detalle.dni) lineas.push(`DNI: ${detalle.dni}${detalle.nombres?' — '+detalle.nombres:''}${detalle.motivo?' ('+detalle.motivo+')':''}`);
+    else if(detalle.numero) lineas.push(`Nro: ${detalle.numero} — ${detalle.aseguradora||''}`);
+  }
+  await notificarTelegram(lineas.filter(Boolean).join('\n'));
+
+  return codigo;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   SESIÓN
+   ═══════════════════════════════════════════════════════════════════════ */
+let session = null;
+function loadSession(){
+  try{
+    const raw = sessionStorage.getItem(SESSION_KEY) || localStorage.getItem(SESSION_KEY);
+    if(raw) session = JSON.parse(raw);
+  }catch(e){}
+}
+function saveSession(s, remember){
+  session = s;
+  const json = JSON.stringify(s);
+  if(remember) localStorage.setItem(SESSION_KEY, json);
+  else sessionStorage.setItem(SESSION_KEY, json);
+}
+function clearSession(){
+  session = null;
+  sessionStorage.removeItem(SESSION_KEY);
+  localStorage.removeItem(SESSION_KEY);
+}
+function isAdmin(){ return session && session.rol === 'administrador'; }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   LOGIN / LOGOUT
+   ═══════════════════════════════════════════════════════════════════════ */
+async function doLogin(){
+  const email = document.getElementById('l-user').value.trim().toLowerCase();
+  const pass = document.getElementById('l-pass').value;
+  const remember = document.getElementById('l-remember').checked;
+  const err = document.getElementById('l-error');
+  err.style.display='none';
+  if(!email || !pass){ err.textContent='Ingresa correo y contraseña.'; err.style.display='block'; return; }
+
+  try{
+    const { data, error } = await sb.from('usuarios').select('*').eq('email', email).limit(1);
+    if(error) throw error;
+    const u = data && data[0];
+    if(!u || u.password !== pass){
+      err.textContent='Usuario o contraseña incorrectos.'; err.style.display='block'; return;
+    }
+    if(!u.activo){
+      err.textContent='Tu cuenta está inactiva. Contacta al administrador.'; err.style.display='block'; return;
+    }
+
+    const permisos = u.permisos || (u.rol === 'administrador' ? PERMISOS_DEFAULT_ADMIN : PERMISOS_DEFAULT_EMPRESA);
+    saveSession({
+      id:u.id, email:u.email, nombre:u.nombre, apellido:u.apellido,
+      rol:u.rol, empresa_id:u.empresa_id, sede:u.sede, permisos,
+    }, remember);
+    document.getElementById('l-user').value='';
+    document.getElementById('l-pass').value='';
+    await enterApp();
+  }catch(e){
+    console.error(e);
+    err.textContent='Error de conexión: ' + e.message; err.style.display='block';
+  }
+}
+function doLogout(){
+  if(!confirm('¿Cerrar sesión?')) return;
+  desactivarRealtime();
+  clearSession();
+  showPage('pg-login');
+  document.getElementById('l-user').focus();
+}
+async function enterApp(){
+  showPage('pg-app');
+  // Mostrar/ocultar pestañas de admin
+  document.getElementById('nav-empresas').style.display = isAdmin() ? '' : 'none';
+  document.getElementById('nav-usuarios').style.display = isAdmin() ? '' : 'none';
+  document.getElementById('nav-datos').style.display = isAdmin() ? '' : 'none';
+  document.getElementById('btn-nueva-poliza').style.display = tienePermiso('crear_polizas') ? '' : 'none';
+  // User badge
+  const initials = (session.nombre[0]||'?') + (session.apellido?session.apellido[0]:(session.nombre[1]||''));
+  document.getElementById('user-avatar').textContent = initials.toUpperCase();
+  document.getElementById('user-name').textContent = `${session.nombre} ${session.apellido||''}`.trim();
+  document.getElementById('user-role').textContent = session.rol === 'administrador' ? 'Administrador' : 'Empresa';
+  setView('dashboard');
+  await cargarTodo();
+  activarRealtime();
+}
+function showPage(id){
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   ROUTER DE VISTAS
+   ═══════════════════════════════════════════════════════════════════════ */
+let currentView = 'dashboard';
+function setView(v){
+  // Bloqueo: empresas no acceden a empresas/usuarios/datos
+  if(!isAdmin() && (v==='empresas' || v==='usuarios' || v==='datos')) v='dashboard';
+  currentView = v;
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === v));
+  document.querySelectorAll('.view').forEach(s => s.classList.remove('active'));
+  document.getElementById('view-'+v).classList.add('active');
+  if(v==='polizas'){
+    document.getElementById('polizas-list').style.display='';
+    document.getElementById('polizas-detalle').style.display='none';
+  }
+  refreshAll();
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   UTILIDADES
+   ═══════════════════════════════════════════════════════════════════════ */
+function fmt(d){ if(!d) return '—'; try{return new Date(d).toLocaleDateString('es-PE');}catch(e){return d;} }
+function fmtDT(d){ if(!d) return '—'; try{return new Date(d).toLocaleString('es-PE');}catch(e){return d;} }
+function fmtMoney(n){ return parseFloat(n||0).toLocaleString('es-PE',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function calcFechaFin(inicio, meses){
+  if(!inicio||!meses) return '';
+  const d = new Date(inicio);
+  d.setMonth(d.getMonth() + parseInt(meses,10));
+  d.setDate(d.getDate() - 1);
+  return d.toISOString().slice(0,10);
+}
+function esVigente(p){ return new Date(p.fecha_fin) >= new Date(); }
+function esPorVencer(p){
+  const dias = (new Date(p.fecha_fin) - new Date()) / (1000*60*60*24);
+  return dias >= 0 && dias <= 30;
+}
+function escapeHtml(s){
+  if(s===null||s===undefined) return '';
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function toast(msg, type='success'){
+  const t = document.getElementById('toast');
+  t.className = 'toast show toast-' + type;
+  t.innerHTML = (type==='success'?'✓':type==='error'?'✗':'ℹ') + ' ' + escapeHtml(msg);
+  clearTimeout(toast._h);
+  toast._h = setTimeout(()=> t.classList.remove('show'), 3000);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   MODAL
+   ═══════════════════════════════════════════════════════════════════════ */
+function abrirModal(html, large){
+  const m = document.getElementById('modal-content');
+  m.className = 'modal' + (large?' modal-lg':'');
+  m.innerHTML = html;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+function cerrarModal(){ document.getElementById('modal-overlay').classList.remove('open'); }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   FILTRADO POR EMPRESA / VISIBILIDAD
+   ═══════════════════════════════════════════════════════════════════════ */
+function polizasVisibles(){
+  const all = db().polizas;
+  if(isAdmin()) return all;
+  return all.filter(p => p.empresa_id === session.empresa_id);
+}
+function empresaById(id){ return db().empresas.find(e => e.id === id); }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   DASHBOARD
+   ═══════════════════════════════════════════════════════════════════════ */
+function renderDashboard(){
+  const polizas = polizasVisibles();
+  const d = db();
+
+  document.getElementById('dash-greeting').textContent = `Hola, ${session.nombre}`;
+  document.getElementById('dash-sub').textContent = isAdmin()
+    ? 'Resumen general del sistema'
+    : `Resumen de pólizas de ${empresaById(session.empresa_id)?.razon_social || 'tu empresa'}`;
+
+  const vigentes = polizas.filter(esVigente);
+  const porVencer = polizas.filter(esPorVencer);
+  const trabajadores = vigentes.reduce((acc,p) => acc + asegActivosPoliza(p.id).length, 0);
+  const planillaTotal = vigentes.reduce((acc,p) => acc + planillaTotalPoliza(p.id), 0);
+  const primaTotal = vigentes.reduce((acc,p) => acc + primaCalculadaPoliza(p), 0);
+
+  document.getElementById('k-polizas-vig').textContent = vigentes.length;
+  document.getElementById('k-por-vencer').textContent = porVencer.length;
+  document.getElementById('k-trabajadores').textContent = trabajadores;
+  document.getElementById('k-prima').textContent = tienePermiso('ver_primas') ? ('S/ ' + fmtMoney(primaTotal)) : '—';
+  // Reemplazar etiquetas
+  const lblPrima = document.querySelector('#k-prima').parentElement.querySelector('.kpi-label');
+  if(lblPrima) lblPrima.textContent = 'Prima mensual total';
+  // Insertar planilla total como cuarto KPI alternativo si hay espacio
+  const planillaEl = document.getElementById('k-planilla');
+  if(planillaEl) planillaEl.textContent = tienePermiso('ver_primas') ? ('S/ ' + fmtMoney(planillaTotal)) : '—';
+
+  // Tabla últimas pólizas
+  const ultimas = polizas.slice().sort((a,b) => new Date(b.created_at) - new Date(a.created_at)).slice(0,5);
+  const wrap = document.getElementById('dash-polizas-wrap');
+  if(!ultimas.length){
+    wrap.innerHTML = `<div class="empty-state"><div class="empty-icon">📄</div><div class="empty-text">${tienePermiso('crear_polizas')?'Aún no hay pólizas. Crea la primera desde Pólizas.':'No tienes pólizas asignadas todavía.'}</div></div>`;
+  } else {
+    wrap.innerHTML = `<table>
+      <thead><tr><th>Número</th><th>Empresa</th><th>Aseguradora</th><th>Vigencia</th><th>Activos</th><th>Estado</th></tr></thead>
+      <tbody>${ultimas.map(p => {
+        const emp = empresaById(p.empresa_id);
+        const activos = asegActivosPoliza(p.id).length;
+        const estado = esVigente(p) ? 'Vigente' : (p.estado === 'renovada' ? 'Renovada' : 'Vencida');
+        const cls = esVigente(p) ? 'pill-green' : (p.estado === 'renovada' ? 'pill-blue' : 'pill-gray');
+        return `<tr>
+          <td class="td-mono font-bold">${escapeHtml(p.numero)}</td>
+          <td>${escapeHtml(emp?.razon_social||'—')}</td>
+          <td>${escapeHtml(p.aseguradora)}</td>
+          <td class="td-mono">${fmt(p.fecha_inicio)} → ${fmt(p.fecha_fin)}</td>
+          <td>${activos}</td>
+          <td><span class="pill ${cls}">${estado}</span></td>
+        </tr>`;
+      }).join('')}</tbody></table>`;
+  }
+
+  // Empresas (solo admin)
+  document.getElementById('dash-empresas-card').style.display = isAdmin()?'':'none';
+  if(isAdmin()){
+    const emps = d.empresas;
+    document.getElementById('dash-emp-sub').textContent = `${emps.length} empresa${emps.length!==1?'s':''} registrada${emps.length!==1?'s':''}`;
+    const w = document.getElementById('dash-empresas-wrap');
+    if(!emps.length){
+      w.innerHTML = `<div class="empty-state"><div class="empty-icon">🏢</div><div class="empty-text">Aún no hay empresas. Ve a Empresas para registrar la primera.</div></div>`;
+    } else {
+      w.innerHTML = `<table>
+        <thead><tr><th>Razón social</th><th>RUC</th><th>Sede</th><th>Pólizas</th></tr></thead>
+        <tbody>${emps.map(e => `<tr>
+          <td class="font-bold">${escapeHtml(e.razon_social)}</td>
+          <td class="td-mono">${escapeHtml(e.ruc)}</td>
+          <td>${escapeHtml(e.sede||'—')}</td>
+          <td>${d.polizas.filter(p=>p.empresa_id===e.id).length}</td>
+        </tr>`).join('')}</tbody></table>`;
+    }
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   PÓLIZAS — LISTADO + FILTROS
+   ═══════════════════════════════════════════════════════════════════════ */
+function renderPolizas(){
+  const d = db();
+  // Filtro empresa (sólo admin lo ve)
+  const fEmp = document.getElementById('filtro-empresa');
+  if(isAdmin()){
+    const cur = fEmp.value;
+    fEmp.innerHTML = '<option value="">Todas las empresas</option>' + d.empresas.map(e =>
+      `<option value="${e.id}" ${cur===e.id?'selected':''}>${escapeHtml(e.razon_social)}</option>`).join('');
+    fEmp.style.display='';
+  } else {
+    fEmp.style.display='none';
+  }
+
+  let lista = polizasVisibles();
+  const empF = isAdmin() ? fEmp.value : '';
+  if(empF) lista = lista.filter(p => p.empresa_id === empF);
+
+  const q = document.getElementById('filtro-busqueda').value.trim().toLowerCase();
+  if(q){
+    lista = lista.filter(p => {
+      const e = empresaById(p.empresa_id);
+      return (p.numero||'').toLowerCase().includes(q) ||
+             (e?.razon_social||'').toLowerCase().includes(q) ||
+             (e?.ruc||'').toLowerCase().includes(q) ||
+             (p.aseguradora||'').toLowerCase().includes(q);
+    });
+  }
+
+  document.getElementById('pol-sub').textContent = isAdmin()
+    ? `${lista.length} póliza${lista.length!==1?'s':''}`
+    : `${lista.length} póliza${lista.length!==1?'s':''} de tu empresa`;
+
+  const verPrimas = tienePermiso('ver_primas');
+
+  const wrap = document.getElementById('polizas-tbl-wrap');
+  if(!lista.length){
+    wrap.innerHTML = `<div class="empty-state"><div class="empty-icon">📄</div><div class="empty-text">${
+      isAdmin() ? 'No hay pólizas. Crea la primera con + Nueva póliza.' : 'No tienes pólizas asignadas todavía.'
+    }</div></div>`;
+    return;
+  }
+  wrap.innerHTML = `<table>
+    <thead><tr>
+      <th>Número</th><th>Empresa</th><th>Aseguradora</th><th>Vigencia</th>
+      ${verPrimas?'<th>Planilla</th><th>Tasa</th><th>Prima mensual</th>':''}
+      <th>Activos</th><th>Estado</th><th></th>
+    </tr></thead>
+    <tbody>${lista.map(p => {
+      const e = empresaById(p.empresa_id);
+      const activos = asegActivosPoliza(p.id).length;
+      const planilla = planillaTotalPoliza(p.id);
+      const prima = primaCalculadaPoliza(p);
+      const vig = esVigente(p);
+      const estado = vig ? 'Vigente' : (p.estado === 'renovada' ? 'Renovada' : 'Vencida');
+      const cls = vig ? 'pill-green' : (p.estado === 'renovada' ? 'pill-blue' : 'pill-gray');
+      return `<tr>
+        <td class="td-mono font-bold">${escapeHtml(p.numero)}${p.numero_renovacion?` <span class="pill pill-blue" style="font-size:9px;padding:1px 6px;">R${p.numero_renovacion}</span>`:''}</td>
+        <td><div class="font-600">${escapeHtml(e?.razon_social||'—')}</div><div class="text-xs text-muted td-mono">${escapeHtml(e?.ruc||'')}</div></td>
+        <td>${escapeHtml(p.aseguradora)}</td>
+        <td class="td-mono text-xs">${fmt(p.fecha_inicio)}<br>→ ${fmt(p.fecha_fin)}</td>
+        ${verPrimas?`<td class="td-mono">S/ ${fmtMoney(planilla)}</td><td class="td-mono">${parseFloat(p.tasa||0).toFixed(2)}%</td><td class="td-mono font-bold">S/ ${fmtMoney(prima)}</td>`:''}
+        <td>${activos}</td>
+        <td><span class="pill ${cls}">${estado}</span></td>
+        <td><button class="btn btn-ghost btn-sm" onclick="abrirDetallePoliza('${p.id}')">Abrir →</button></td>
+      </tr>`;
+    }).join('')}</tbody></table>`;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   PÓLIZAS — CREAR / EDITAR
+   ═══════════════════════════════════════════════════════════════════════ */
+function abrirNuevaPoliza(){
+  if(!isAdmin()){ toast('Solo el administrador puede crear pólizas','error'); return; }
+  if(!cache.empresas.length){
+    toast('Primero registra una empresa vinculante en Empresas','error');
+    return;
+  }
+  // Limpiar buffer de asegurados pre-cargados
+  npAsegurados = [];
+
+  abrirModal(`
+    <div class="modal-title">Nueva póliza SCTR</div>
+    <div class="modal-sub">Registra la póliza, define la tasa y opcionalmente carga asegurados desde Excel</div>
+
+    <div class="tabs" style="margin-bottom:1.2rem;">
+      <button class="tab active" onclick="cambiarTabPoliza(event,'datos')">Datos de la póliza</button>
+      <button class="tab" onclick="cambiarTabPoliza(event,'asegurados')">Asegurados (Excel)</button>
+    </div>
+
+    <div id="tab-poliza-datos" class="tab-pane active">
+      <div class="fs">
+        <div class="fs-title">Datos generales</div>
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label class="form-label">Número de póliza *</label>
+            <input class="form-input" id="np-numero" placeholder="Ej: 5501-2024-00123"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Empresa vinculante *</label>
+            <select class="form-select" id="np-empresa">
+              ${cache.empresas.map(e => `<option value="${e.id}">${escapeHtml(e.razon_social)} — ${escapeHtml(e.ruc)}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div class="form-grid-3">
+          <div class="form-group">
+            <label class="form-label">Aseguradora *</label>
+            <select class="form-select" id="np-aseguradora">${catalogoOptions('aseguradora')}</select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Tipo SCTR</label>
+            <select class="form-select" id="np-tipo">${catalogoOptions('tipo_sctr')}</select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Clase de riesgo</label>
+            <select class="form-select" id="np-clase"><option value="">—</option>${catalogoOptions('clase_riesgo')}</select>
+          </div>
+        </div>
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label class="form-label">CIIU</label>
+            <input class="form-input" id="np-ciiu" placeholder="Ej: 4290"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Lugar de ejecución</label>
+            <input class="form-input" id="np-lugar" placeholder="Ej: Lima, Arequipa"/>
+          </div>
+        </div>
+      </div>
+
+      <div class="fs">
+        <div class="fs-title">Vigencia</div>
+        <div class="form-grid-3">
+          <div class="form-group">
+            <label class="form-label">Fecha de inicio *</label>
+            <input type="date" class="form-input" id="np-inicio" value="${new Date().toISOString().slice(0,10)}" oninput="recalcFechaFin()"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Meses de vigencia *</label>
+            <input type="number" class="form-input" id="np-meses" value="12" min="1" max="60" oninput="recalcFechaFin()"/>
+            <div class="form-hint">Default 12. Rango 1-60.</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Fecha fin (auto)</label>
+            <input type="date" class="form-input" id="np-fin" disabled style="background:#f5f7fc;"/>
+          </div>
+        </div>
+      </div>
+
+      <div class="fs">
+        <div class="fs-title">Tasa</div>
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label class="form-label">Tasa (%) *</label>
+            <input type="number" step="0.0001" min="0" class="form-input" id="np-tasa" placeholder="Ej: 1.23" oninput="recalcPrimaPreview()"/>
+            <div class="form-hint">Solo el administrador puede definir la tasa. La prima se calculará automáticamente: planilla × tasa.</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Prima mensual estimada</label>
+            <input class="form-input" id="np-prima-preview" disabled style="background:#f5f7fc;font-weight:700;color:var(--success);" value="S/ 0.00"/>
+            <div class="form-hint" id="np-prima-hint">Carga asegurados en la pestaña siguiente para ver el cálculo.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="tab-poliza-asegurados" class="tab-pane">
+      <div class="alert alert-info"><span class="alert-icon">ℹ️</span>
+        <div><strong>Carga inicial de asegurados (opcional).</strong> Sube un archivo .xlsx según la plantilla de Mapfre. Estos trabajadores se crearán junto con la póliza al confirmar.</div>
+      </div>
+      <div class="import-zone" onclick="document.getElementById('np-excel-file').click()">
+        <div style="font-size:36px;margin-bottom:8px;">📂</div>
+        <div class="font-600" style="font-size:15px;color:var(--pri);">Haz clic o arrastra tu archivo Excel aquí</div>
+        <div class="text-xs text-muted mt-8">Formatos: .xlsx · .xls · .csv</div>
+        <input type="file" id="np-excel-file" accept=".xlsx,.xls,.csv" style="display:none;" onchange="cargarExcelPolizaNueva(event)"/>
+      </div>
+      <div class="flex gap-8 mt-12" style="justify-content:center;">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="descargarPlantillaMapfre()">📄 Descargar plantilla Mapfre (.xlsx)</button>
+      </div>
+      <div id="np-asegurados-preview" class="mt-16"></div>
+    </div>
+
+    <div class="modal-ftr">
+      <button class="btn btn-ghost" onclick="cerrarModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarPoliza()">Crear póliza</button>
+    </div>
+  `, true);
+  recalcFechaFin();
+  recalcPrimaPreview();
+}
+
+// Buffer de asegurados pre-cargados al crear póliza
+let npAsegurados = [];
+
+function cambiarTabPoliza(ev, tab){
+  document.querySelectorAll('#modal-content .tabs > .tab').forEach(t => t.classList.remove('active'));
+  ev.target.classList.add('active');
+  document.querySelectorAll('#modal-content > .tab-pane').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-poliza-' + tab).classList.add('active');
+}
+
+function recalcPrimaPreview(){
+  const tasa = parseFloat(document.getElementById('np-tasa')?.value || 0);
+  const planilla = npAsegurados.reduce((s,a) => s + parseFloat(a.sueldo||0), 0);
+  const prima = planilla * tasa / 100;
+  const el = document.getElementById('np-prima-preview');
+  const hint = document.getElementById('np-prima-hint');
+  if(el) el.value = 'S/ ' + fmtMoney(prima);
+  if(hint){
+    if(npAsegurados.length === 0) hint.textContent = 'Carga asegurados en la pestaña siguiente para ver el cálculo.';
+    else hint.textContent = `${npAsegurados.length} asegurado(s) · Planilla: S/ ${fmtMoney(planilla)} × ${tasa}% = S/ ${fmtMoney(prima)}/mes`;
+  }
+}
+
+function cargarExcelPolizaNueva(ev){
+  const file = ev.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try{
+      const data = new Uint8Array(e.target.result);
+      const wb = XLSX.read(data, {type:'array', cellDates:true});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, {defval:'', raw:false});
+
+      npAsegurados = [];
+      const errores = [];
+      rows.forEach((r, idx) => {
+        const a = mapearFilaMapfre(r);
+        if(!a) return;
+        if(!a.dni || !a.nombres) {
+          errores.push(`Fila ${idx+2}: faltan datos obligatorios`);
+          return;
+        }
+        npAsegurados.push(a);
+      });
+
+      const div = document.getElementById('np-asegurados-preview');
+      if(npAsegurados.length){
+        const planilla = npAsegurados.reduce((s,a) => s + parseFloat(a.sueldo||0), 0);
+        div.innerHTML = `
+          <div class="alert alert-success"><span class="alert-icon">✅</span>
+            <div><strong>${npAsegurados.length} trabajador(es) listos para incluir</strong>
+            <div class="summary-row">
+              <div class="summary-item"><div class="summary-item-num" style="color:var(--info);">${npAsegurados.length}</div><div class="summary-item-lbl">Trabajadores</div></div>
+              <div class="summary-item"><div class="summary-item-num" style="color:var(--success);">S/ ${fmtMoney(planilla)}</div><div class="summary-item-lbl">Planilla total</div></div>
+              ${errores.length?`<div class="summary-item"><div class="summary-item-num" style="color:var(--danger);">${errores.length}</div><div class="summary-item-lbl">Errores</div></div>`:''}
+            </div>
+            ${errores.length?`<details style="margin-top:10px;"><summary class="text-xs text-muted" style="cursor:pointer;">Ver errores</summary><ul style="margin-top:6px;font-size:12px;">${errores.map(e=>`<li>${escapeHtml(e)}</li>`).join('')}</ul></details>`:''}
+          </div></div>
+        `;
+      } else {
+        div.innerHTML = `<div class="alert alert-warn"><span class="alert-icon">⚠️</span><div>No se encontraron trabajadores válidos en el archivo.</div></div>`;
+      }
+      recalcPrimaPreview();
+      ev.target.value = '';
+    }catch(err){
+      toast('Error procesando Excel: ' + err.message, 'error');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+function recalcFechaFin(){
+  const ini = document.getElementById('np-inicio')?.value;
+  const m = document.getElementById('np-meses')?.value;
+  const fin = document.getElementById('np-fin');
+  if(fin && ini && m) fin.value = calcFechaFin(ini, m);
+}
+async function guardarPoliza(){
+  const numero = document.getElementById('np-numero').value.trim();
+  const empresa_id = document.getElementById('np-empresa').value;
+  const aseguradora = document.getElementById('np-aseguradora').value;
+  const tipo = document.getElementById('np-tipo').value;
+  const clase = document.getElementById('np-clase').value;
+  const ciiu = document.getElementById('np-ciiu').value.trim();
+  const lugar = document.getElementById('np-lugar').value.trim();
+  const inicio = document.getElementById('np-inicio').value;
+  const meses = parseInt(document.getElementById('np-meses').value, 10);
+  const tasa = parseFloat(document.getElementById('np-tasa').value || 0);
+
+  if(!numero || !empresa_id || !inicio || !meses){
+    toast('Completa los campos obligatorios (*)','error'); return;
+  }
+  if(meses < 1 || meses > 60){
+    toast('Meses de vigencia debe estar entre 1 y 60','error'); return;
+  }
+  if(!tasa || tasa <= 0){
+    toast('La tasa debe ser mayor a 0','error'); return;
+  }
+  if(cache.polizas.some(p => p.numero === numero)){
+    toast('Ya existe una póliza con ese número','error'); return;
+  }
+
+  const fin = calcFechaFin(inicio, meses);
+  const planilla = npAsegurados.reduce((s,a) => s + parseFloat(a.sueldo||0), 0);
+  const primaCalculada = planilla * tasa / 100;
+
+  const nueva = {
+    numero, empresa_id, aseguradora, tipo,
+    clase_riesgo: clase || null, ciiu: ciiu || null, lugar_ejecucion: lugar || null,
+    fecha_inicio: inicio, fecha_fin: fin, meses_vigencia: meses,
+    prima_mensual: primaCalculada, tasa, estado: 'vigente',
+    numero_renovacion: 0,
+  };
+
+  try{
+    const { data: pol, error } = await sb.from('polizas').insert(nueva).select().single();
+    if(error) throw error;
+
+    // Insertar asegurados pre-cargados (si los hay)
+    if(npAsegurados.length){
+      const inserts = npAsegurados.map(a => ({ ...a, poliza_id: pol.id, estado: 'activo' }));
+      const { error: errA } = await sb.from('asegurados').insert(inserts);
+      if(errA) console.error('Error insertando asegurados:', errA);
+    }
+
+    await registrarMovimiento(pol.id, 'creacion', { numero, aseguradora, asegurados_iniciales: npAsegurados.length });
+    npAsegurados = [];
+    cerrarModal();
+    toast(`Póliza creada${nueva ? ` con ${npAsegurados.length} asegurado(s)` : ''}`);
+  }catch(e){
+    toast('Error: ' + e.message, 'error');
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   PLANTILLA MAPFRE: 13 campos reales
+   ═══════════════════════════════════════════════════════════════════════ */
+const COLUMNAS_MAPFRE = [
+  'Nombres*','ApPaterno*','ApMaterno','TipoTrabajador*','PaisNacimiento',
+  'TipoIdent*','NumIdent*','Sexo*','FecNacimiento*','Moneda*',
+  'Remuneracion*','EstadoCivil*','Sede*'
+];
+
+function descargarPlantillaMapfre(){
+  const ws = XLSX.utils.aoa_to_sheet([
+    COLUMNAS_MAPFRE,
+    ['', '', '', '', '', '', '', '', 'dd/mm/yyyy', 'S/.', '0.00', '', ''],
+    ['JUAN CARLOS', 'PÉREZ', 'GARCÍA', 'Medio Riesgo', 'Perú', 'DNI', '12345678', 'M', '15/01/1985', 'S/.', 1500, 'Soltero', 'PRINCIPAL'],
+  ]);
+  // Ancho de columnas
+  ws['!cols'] = COLUMNAS_MAPFRE.map(()=>({wch: 18}));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Asegurados');
+  XLSX.writeFile(wb, 'plantilla_asegurados_mapfre.xlsx');
+}
+
+function descargarPlantillaExclusion(){
+  const ws = XLSX.utils.aoa_to_sheet([
+    ['NumIdent*','MotivoCese*','FechaCese*'],
+    ['12345678', 'Renuncia', '15/04/2026'],
+    ['87654321', 'Término de contrato', '30/04/2026'],
+  ]);
+  ws['!cols'] = [{wch:14},{wch:24},{wch:14}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Exclusiones');
+  XLSX.writeFile(wb, 'plantilla_exclusiones.xlsx');
+}
+
+function descargarPlantillaRenovacion(){
+  const ws = XLSX.utils.aoa_to_sheet([
+    COLUMNAS_MAPFRE,
+    ['', '', '', '', '', '', '', '', 'dd/mm/yyyy', 'S/.', '0.00', '', ''],
+  ]);
+  ws['!cols'] = COLUMNAS_MAPFRE.map(()=>({wch: 18}));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Asegurados Renovacion');
+  XLSX.writeFile(wb, 'plantilla_renovacion.xlsx');
+}
+
+function parseFechaFlexible(v){
+  if(!v) return null;
+  if(v instanceof Date) return isNaN(v) ? null : v.toISOString().slice(0,10);
+  const s = String(v).trim();
+  // dd/mm/yyyy ó dd-mm-yyyy
+  let m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if(m){
+    const dd = m[1].padStart(2,'0'), mm = m[2].padStart(2,'0'), yyyy = m[3];
+    return `${yyyy}-${mm}-${dd}`;
+  }
+  // mm/dd/yyyy (formato del modelo Mapfre)
+  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(m){
+    const a = parseInt(m[1],10), b = parseInt(m[2],10);
+    // Si el primero es >12, es definitivamente día
+    if(a > 12) return `${m[3]}-${b.toString().padStart(2,'0')}-${a.toString().padStart(2,'0')}`;
+    if(b > 12) return `${m[3]}-${a.toString().padStart(2,'0')}-${b.toString().padStart(2,'0')}`;
+    // Ambiguo: asumimos dd/mm (formato latino)
+    return `${m[3]}-${b.toString().padStart(2,'0')}-${a.toString().padStart(2,'0')}`;
+  }
+  // yyyy-mm-dd
+  if(/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  // Excel serial number
+  if(typeof v === 'number' || /^\d+$/.test(s)){
+    const n = Number(s);
+    if(n > 25569 && n < 80000){
+      const d = new Date(Math.round((n - 25569) * 86400 * 1000));
+      return d.toISOString().slice(0,10);
+    }
+  }
+  const d = new Date(s);
+  return isNaN(d) ? null : d.toISOString().slice(0,10);
+}
+
+// Mapea una fila Excel (con columnas Mapfre) a objeto asegurado para DB
+function mapearFilaMapfre(row){
+  // Normalizar claves: minúsculas, sin asterisco, sin espacios
+  const o = {};
+  for(const k of Object.keys(row)){
+    const norm = k.toLowerCase().replace(/\*/g,'').trim().replace(/\s+/g,'');
+    o[norm] = row[k];
+  }
+  const nombres = String(o.nombres || '').trim();
+  const ap_pat = String(o.appaterno || o.apellidopaterno || '').trim();
+  const ap_mat = String(o.apmaterno || o.apellidomaterno || '').trim();
+  const tipo_trab = String(o.tipotrabajador || '').trim();
+  const pais_nac = String(o.paisnacimiento || 'Perú').trim();
+  const tipo_id = String(o.tipoident || o.tipoidentificacion || 'DNI').trim();
+  const dni = String(o.numident || o.dni || '').trim();
+  const sexo = String(o.sexo || '').trim().toUpperCase();
+  const fec_nac = parseFechaFlexible(o.fecnacimiento || o.fechanacimiento);
+  const moneda = String(o.moneda || 'S/.').trim();
+  const sueldo = parseFloat(String(o.remuneracion || o.sueldo || 0).replace(',','.')) || 0;
+  const estado_civil = String(o.estadocivil || '').trim();
+  const sede = String(o.sede || '').trim();
+
+  if(!nombres || !dni) return null;
+  return {
+    dni,
+    nombres,
+    apellido_paterno: ap_pat || null,
+    apellido_materno: ap_mat || null,
+    apellidos: [ap_pat, ap_mat].filter(Boolean).join(' ') || null, // legacy
+    tipo_trabajador: tipo_trab || null,
+    pais_nacimiento: pais_nac || null,
+    tipo_identificacion: tipo_id || null,
+    sexo: sexo || null,
+    fecha_nacimiento: fec_nac,
+    moneda: moneda || null,
+    sueldo,
+    estado_civil: estado_civil || null,
+    sede: sede || null,
+  };
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   PÓLIZA — DETALLE CON TABS
+   ═══════════════════════════════════════════════════════════════════════ */
+let detallePolizaId = null;
+let detalleTab = 'asegurados';
+
+function abrirDetallePoliza(id){
+  detallePolizaId = id;
+  detalleTab = 'asegurados';
+  document.getElementById('polizas-list').style.display = 'none';
+  document.getElementById('polizas-detalle').style.display = '';
+  renderDetallePoliza();
+}
+function cerrarDetallePoliza(){
+  detallePolizaId = null;
+  document.getElementById('polizas-list').style.display = '';
+  document.getElementById('polizas-detalle').style.display = 'none';
+  renderPolizas();
+}
+function renderDetallePoliza(){
+  if(!detallePolizaId) return;
+  const d = db();
+  const p = d.polizas.find(x => x.id === detallePolizaId);
+  if(!p){
+    cerrarDetallePoliza();
+    return;
+  }
+  const e = empresaById(p.empresa_id);
+  const activos = asegActivosPoliza(p.id);
+  const excluidos = d.asegurados.filter(a => a.poliza_id===p.id && a.estado==='excluido');
+  const vig = esVigente(p);
+  const planilla = planillaTotalPoliza(p.id);
+  const primaVivo = primaCalculadaPoliza(p);
+  const renovada = p.estado === 'renovada';
+
+  // Buscar póliza derivada (si fue renovada)
+  const polizaSiguiente = d.polizas.find(x => x.poliza_origen_id === p.id);
+
+  const cont = document.getElementById('polizas-detalle');
+  cont.innerHTML = `
+    <button class="btn btn-ghost btn-sm" onclick="cerrarDetallePoliza()">← Volver a pólizas</button>
+    <div class="page-hdr mt-12">
+      <div>
+        <div class="page-title">Póliza ${escapeHtml(p.numero)}${p.numero_renovacion?` <span class="pill pill-blue" style="font-size:11px;">R${p.numero_renovacion}</span>`:''}</div>
+        <div class="page-sub">${escapeHtml(e?.razon_social||'—')} — ${escapeHtml(p.aseguradora)}</div>
+      </div>
+      <span class="pill ${vig?'pill-green':(renovada?'pill-blue':'pill-gray')}" style="font-size:13px;padding:6px 14px;">${vig?'VIGENTE':(renovada?'RENOVADA':'VENCIDA')}</span>
+    </div>
+
+    ${renovada && polizaSiguiente ? `
+      <div class="alert alert-info"><span class="alert-icon">🔄</span>
+        <div>Esta póliza fue renovada. La nueva es <strong><a href="#" class="lnk" onclick="abrirDetallePoliza('${polizaSiguiente.id}');return false;">${escapeHtml(polizaSiguiente.numero)}</a></strong> (${fmt(polizaSiguiente.fecha_inicio)} → ${fmt(polizaSiguiente.fecha_fin)}).</div>
+      </div>` : ''}
+    ${p.poliza_origen_id ? (() => {
+      const origen = d.polizas.find(x => x.id === p.poliza_origen_id);
+      return origen ? `
+      <div class="alert alert-info"><span class="alert-icon">📜</span>
+        <div>Renovación de la póliza <strong><a href="#" class="lnk" onclick="abrirDetallePoliza('${origen.id}');return false;">${escapeHtml(origen.numero)}</a></strong>.</div>
+      </div>` : '';
+    })() : ''}
+
+    <div class="kpi-grid">
+      <div class="kpi"><div class="kpi-label">Vigencia</div><div class="kpi-num" style="font-size:15px;">${fmt(p.fecha_inicio)}</div><div class="form-hint">→ ${fmt(p.fecha_fin)} (${p.meses_vigencia}m)</div></div>
+      <div class="kpi kpi-blue"><div class="kpi-label">Trabajadores activos</div><div class="kpi-num">${activos.length}</div><div class="form-hint">${excluidos.length} excluidos histórico</div></div>
+      ${tienePermiso('ver_primas') ? `
+      <div class="kpi"><div class="kpi-label">Planilla total</div><div class="kpi-num" style="font-size:20px;">S/ ${fmtMoney(planilla)}</div><div class="form-hint">Suma de remuneraciones</div></div>
+      <div class="kpi kpi-green"><div class="kpi-label">Prima mensual (calculada)</div><div class="kpi-num" style="font-size:22px;">S/ ${fmtMoney(primaVivo)}</div><div class="form-hint">Tasa ${parseFloat(p.tasa||0).toFixed(2)}% × planilla</div></div>
+      ` : ''}
+      <div class="kpi kpi-orange"><div class="kpi-label">Clase de riesgo</div><div class="kpi-num" style="font-size:18px;">${p.clase_riesgo||'N/A'}</div><div class="form-hint">CIIU ${p.ciiu||'—'}</div></div>
+    </div>
+
+    <div class="card">
+      <div class="tabs">
+        <button class="tab ${detalleTab==='asegurados'?'active':''}" onclick="setDetalleTab('asegurados')">Asegurados (${activos.length})</button>
+        ${tienePermiso('incluir_trabajadores') && !renovada ? `<button class="tab ${detalleTab==='inclusion'?'active':''}" onclick="setDetalleTab('inclusion')">Inclusión</button>` : ''}
+        ${tienePermiso('excluir_trabajadores') && !renovada ? `<button class="tab ${detalleTab==='exclusion'?'active':''}" onclick="setDetalleTab('exclusion')">Exclusión</button>` : ''}
+        ${tienePermiso('renovar_polizas') && !renovada ? `<button class="tab ${detalleTab==='renovacion'?'active':''}" onclick="setDetalleTab('renovacion')">Renovación</button>` : ''}
+        <button class="tab ${detalleTab==='historial'?'active':''}" onclick="setDetalleTab('historial')">Historial</button>
+      </div>
+      <div id="detalle-tab-content"></div>
+    </div>
+  `;
+  renderDetalleTab();
+}
+function setDetalleTab(t){ detalleTab = t; renderDetallePoliza(); }
+
+function renderDetalleTab(){
+  const cont = document.getElementById('detalle-tab-content');
+  if(!cont) return;
+  // Validar permiso del tab
+  if(detalleTab === 'inclusion' && !tienePermiso('incluir_trabajadores')) detalleTab = 'asegurados';
+  if(detalleTab === 'exclusion' && !tienePermiso('excluir_trabajadores')) detalleTab = 'asegurados';
+  if(detalleTab === 'renovacion' && !tienePermiso('renovar_polizas')) detalleTab = 'asegurados';
+
+  if(detalleTab === 'asegurados') cont.innerHTML = htmlTabAsegurados();
+  else if(detalleTab === 'inclusion') cont.innerHTML = htmlTabInclusion();
+  else if(detalleTab === 'exclusion') cont.innerHTML = htmlTabExclusion();
+  else if(detalleTab === 'renovacion') { cont.innerHTML = htmlTabRenovacion(); setTimeout(recalcRenov, 0); }
+  else if(detalleTab === 'historial') cont.innerHTML = htmlTabHistorial();
+}
+
+/* ── Tab: Asegurados ── */
+function htmlTabAsegurados(){
+  const d = db();
+  const lista = d.asegurados.filter(a => a.poliza_id===detallePolizaId && a.estado==='activo');
+  if(!lista.length){
+    return `<div class="empty-state"><div class="empty-icon">👥</div><div class="empty-text">Sin trabajadores activos. Agrega desde la pestaña Inclusión.</div></div>`;
+  }
+  const planilla = lista.reduce((s,a) => s + parseFloat(a.sueldo||0), 0);
+  return `
+    <div class="poliza-indicator">
+      <span class="pi-label">Total trabajadores:</span><span class="pi-value">${lista.length}</span>
+      <span style="margin:0 8px;color:var(--text3);">|</span>
+      <span class="pi-label">Planilla mensual:</span><span class="pi-value">S/ ${fmtMoney(planilla)}</span>
+    </div>
+    <div class="tbl-wrap"><table>
+      <thead><tr>
+        <th>DNI</th><th>Nombre completo</th><th>Tipo trab.</th><th>Sexo</th><th>F. Nac.</th><th>Sueldo</th><th>Sede</th>
+      </tr></thead>
+      <tbody>${lista.map(a => `<tr>
+        <td class="td-mono font-bold">${escapeHtml(a.dni)}</td>
+        <td><div class="font-600">${escapeHtml(a.nombres)}</div><div class="text-xs text-muted">${escapeHtml((a.apellido_paterno||'')+' '+(a.apellido_materno||''))}</div></td>
+        <td class="text-xs">${escapeHtml(a.tipo_trabajador||'—')}</td>
+        <td>${escapeHtml(a.sexo||'—')}</td>
+        <td class="td-mono text-xs">${fmt(a.fecha_nacimiento)}</td>
+        <td class="td-mono">${escapeHtml(a.moneda||'S/.')} ${fmtMoney(a.sueldo)}</td>
+        <td class="text-xs">${escapeHtml(a.sede||'—')}</td>
+      </tr>`).join('')}</tbody></table></div>
+  `;
+}
+
+/* ── Tab: Inclusión ── */
+function htmlTabInclusion(){
+  return `
+    ${tienePermiso('importar_excel') ? `
+    <div class="alert alert-info"><span class="alert-icon">ℹ️</span>
+      <div><strong>Importación masiva desde Excel.</strong> Sube un archivo según la plantilla de Mapfre (13 columnas).
+      Los DNIs duplicados activos se omiten; los excluidos con el mismo DNI se reactivan.</div>
+    </div>
+
+    <div class="import-zone" id="dropzone" onclick="document.getElementById('excel-file').click()">
+      <div style="font-size:36px;margin-bottom:8px;">📂</div>
+      <div class="font-600" style="font-size:15px;color:var(--pri);">Haz clic o arrastra tu archivo Excel aquí</div>
+      <div class="text-xs text-muted mt-8">Formatos: .xlsx · .xls · .csv</div>
+      <input type="file" id="excel-file" accept=".xlsx,.xls,.csv" style="display:none;" onchange="procesarExcel(event)"/>
+    </div>
+    <div class="flex gap-8 mt-12" style="justify-content:center;">
+      <button class="btn btn-secondary btn-sm" onclick="descargarPlantillaMapfre()">📄 Descargar plantilla Mapfre (.xlsx)</button>
+    </div>
+    <div id="import-resultado"></div>
+
+    <div class="divider"></div>
+    ` : ''}
+
+    <div class="fs-title">Inclusión manual</div>
+    <div class="form-grid-3 mt-12">
+      <div class="form-group">
+        <label class="form-label">Nombres *</label>
+        <input class="form-input" id="inc-nombres" placeholder="Juan Carlos"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Apellido paterno *</label>
+        <input class="form-input" id="inc-appat" placeholder="Pérez"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Apellido materno</label>
+        <input class="form-input" id="inc-apmat" placeholder="García"/>
+      </div>
+    </div>
+    <div class="form-grid-3">
+      <div class="form-group">
+        <label class="form-label">Tipo identificación *</label>
+        <select class="form-select" id="inc-tipoid">${catalogoOptions('tipo_identificacion','DNI')}</select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Número identificación *</label>
+        <input class="form-input" id="inc-dni" maxlength="12" placeholder="12345678"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Tipo trabajador *</label>
+        <select class="form-select" id="inc-tipotrab">${catalogoOptions('tipo_trabajador')}</select>
+      </div>
+    </div>
+    <div class="form-grid-3">
+      <div class="form-group">
+        <label class="form-label">Sexo *</label>
+        <select class="form-select" id="inc-sexo">${catalogoOptions('sexo')}</select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Fecha nacimiento *</label>
+        <input type="date" class="form-input" id="inc-fecnac"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Estado civil *</label>
+        <select class="form-select" id="inc-civil">${catalogoOptions('estado_civil')}</select>
+      </div>
+    </div>
+    <div class="form-grid-3">
+      <div class="form-group">
+        <label class="form-label">País nacimiento</label>
+        <select class="form-select" id="inc-pais">${catalogoOptions('pais','Perú')}</select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Sede *</label>
+        <select class="form-select" id="inc-sede">${catalogoOptions('sede')}</select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Moneda *</label>
+        <select class="form-select" id="inc-moneda">${catalogoOptions('moneda')}</select>
+      </div>
+    </div>
+    <div class="form-grid-2">
+      <div class="form-group">
+        <label class="form-label">Remuneración *</label>
+        <input type="number" step="0.01" min="0" class="form-input" id="inc-sueldo" placeholder="1500.00"/>
+      </div>
+    </div>
+    <div class="flex" style="justify-content:flex-end;">
+      <button class="btn btn-primary" onclick="guardarInclusionManual()">+ Agregar trabajador</button>
+    </div>
+  `;
+}
+
+async function guardarInclusionManual(){
+  const get = (id) => document.getElementById(id)?.value?.trim() || '';
+  const nombres = get('inc-nombres');
+  const ap_pat = get('inc-appat');
+  const ap_mat = get('inc-apmat');
+  const tipo_id = get('inc-tipoid');
+  const dni = get('inc-dni');
+  const tipo_trab = get('inc-tipotrab');
+  const sexo = get('inc-sexo');
+  const fec_nac = get('inc-fecnac') || null;
+  const civil = get('inc-civil');
+  const pais = get('inc-pais');
+  const sede = get('inc-sede');
+  const moneda = get('inc-moneda');
+  const sueldo = parseFloat(get('inc-sueldo') || 0);
+
+  if(!nombres || !ap_pat || !dni || !tipo_trab || !sexo || !fec_nac || !civil || !sede || !sueldo){
+    toast('Completa los campos obligatorios (*)','error'); return;
+  }
+
+  const existe = cache.asegurados.find(a => a.poliza_id === detallePolizaId && a.dni === dni);
+  if(existe && existe.estado === 'activo'){
+    toast(`DNI ${dni} ya está incluido y activo`,'error'); return;
+  }
+
+  const data = {
+    dni, nombres,
+    apellido_paterno: ap_pat,
+    apellido_materno: ap_mat || null,
+    apellidos: [ap_pat, ap_mat].filter(Boolean).join(' '),
+    tipo_trabajador: tipo_trab,
+    pais_nacimiento: pais || null,
+    tipo_identificacion: tipo_id,
+    sexo, fecha_nacimiento: fec_nac,
+    moneda: moneda || 'S/.',
+    sueldo,
+    estado_civil: civil,
+    sede,
+  };
+
+  try{
+    if(existe && existe.estado === 'excluido'){
+      const { error } = await sb.from('asegurados').update({
+        ...data, estado:'activo', fecha_cese:null, motivo_cese:null,
+      }).eq('id', existe.id);
+      if(error) throw error;
+      toast('Trabajador reactivado en la póliza');
+    } else {
+      const { error } = await sb.from('asegurados').insert({
+        ...data, poliza_id: detallePolizaId, estado:'activo',
+      });
+      if(error) throw error;
+      toast(`${nombres} incluido correctamente`);
+    }
+    await registrarMovimiento(detallePolizaId, 'inclusion', { dni, nombres });
+    // Limpiar form
+    ['inc-nombres','inc-appat','inc-apmat','inc-dni','inc-fecnac','inc-sueldo'].forEach(id => {
+      const el = document.getElementById(id); if(el) el.value = '';
+    });
+  }catch(e){
+    toast('Error: ' + e.message, 'error');
+  }
+}
+
+/* ── Excel Import (punto 5) ── */
+function descargarPlantilla(){
+  const ws = XLSX.utils.aoa_to_sheet([
+    ['DNI','NOMBRES','APELLIDOS','CARGO','SUELDO','FECHA_INGRESO'],
+    ['12345678','Juan','Pérez García','Operario',1500,'2024-01-15'],
+    ['87654321','María','López Ruiz','Supervisora',2500,'2024-02-01'],
+  ]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Trabajadores');
+  XLSX.writeFile(wb, 'plantilla_inclusiones.xlsx');
+}
+
+function procesarExcel(ev){
+  const file = ev.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try{
+      const data = new Uint8Array(e.target.result);
+      const wb = XLSX.read(data, {type:'array', cellDates:true});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, {defval:'', raw:false});
+      if(!rows.length){ toast('El archivo está vacío','error'); return; }
+
+      const resultado = { insertados:0, reactivados:0, duplicados:0, errores:[] };
+      const insertsNuevos = [];
+      const updatesReactivar = [];
+
+      rows.forEach((r, idx) => {
+        const a = mapearFilaMapfre(r);
+        if(!a){
+          resultado.errores.push(`Fila ${idx+2}: faltan Nombres o NumIdent`);
+          return;
+        }
+        const existe = cache.asegurados.find(x => x.poliza_id === detallePolizaId && x.dni === a.dni);
+        if(existe && existe.estado === 'activo'){
+          resultado.duplicados++; return;
+        }
+        if(existe && existe.estado === 'excluido'){
+          updatesReactivar.push({ id: existe.id, datos: a });
+        } else {
+          insertsNuevos.push({ ...a, poliza_id: detallePolizaId, estado:'activo' });
+        }
+      });
+
+      // Bulk insert
+      if(insertsNuevos.length){
+        const { error } = await sb.from('asegurados').insert(insertsNuevos);
+        if(error){
+          resultado.errores.push('Error insertando: ' + error.message);
+        } else {
+          resultado.insertados = insertsNuevos.length;
+        }
+      }
+      // Bulk update (reactivar)
+      for(const upd of updatesReactivar){
+        const { error } = await sb.from('asegurados').update({
+          ...upd.datos, estado:'activo', fecha_cese:null, motivo_cese:null,
+        }).eq('id', upd.id);
+        if(!error) resultado.reactivados++;
+        else resultado.errores.push('Error reactivando: ' + error.message);
+      }
+
+      const codigo = await registrarMovimiento(detallePolizaId, 'inclusion', { bulk:true, ...resultado, errores: resultado.errores.slice(0,5) });
+
+      const div = document.getElementById('import-resultado');
+      if(div){
+        div.innerHTML = `<div class="alert alert-success mt-12">
+          <span class="alert-icon">✅</span>
+          <div>
+            <strong>Importación completada</strong> · <code style="font-size:11px;background:#fff;padding:2px 6px;border-radius:4px;">${codigo}</code>
+            <div class="summary-row">
+              <div class="summary-item"><div class="summary-item-num" style="color:var(--success);">${resultado.insertados}</div><div class="summary-item-lbl">Insertados</div></div>
+              <div class="summary-item"><div class="summary-item-num" style="color:var(--info);">${resultado.reactivados}</div><div class="summary-item-lbl">Reactivados</div></div>
+              <div class="summary-item"><div class="summary-item-num" style="color:var(--warning);">${resultado.duplicados}</div><div class="summary-item-lbl">Duplicados omitidos</div></div>
+              <div class="summary-item"><div class="summary-item-num" style="color:var(--danger);">${resultado.errores.length}</div><div class="summary-item-lbl">Errores</div></div>
+            </div>
+            ${resultado.errores.length ? `<details style="margin-top:10px;"><summary class="text-xs text-muted" style="cursor:pointer;">Ver errores</summary><ul style="margin-top:6px;font-size:12px;">${resultado.errores.map(e=>`<li>${escapeHtml(e)}</li>`).join('')}</ul></details>` : ''}
+          </div>
+        </div>`;
+      }
+
+      toast(`Excel procesado: ${resultado.insertados} nuevos, ${resultado.reactivados} reactivados, ${resultado.duplicados} omitidos`);
+      ev.target.value = '';
+    }catch(err){
+      console.error(err);
+      toast('Error procesando Excel: ' + err.message, 'error');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+/* ── Tab: Exclusión ── */
+function htmlTabExclusion(){
+  const d = db();
+  const lista = d.asegurados.filter(a => a.poliza_id===detallePolizaId && a.estado==='activo');
+  return `
+    ${tienePermiso('importar_excel') ? `
+    <div class="alert alert-info"><span class="alert-icon">ℹ️</span>
+      <div><strong>Exclusión masiva desde Excel.</strong> Sube un archivo con las columnas: <strong>NumIdent, MotivoCese, FechaCese</strong>. Cada DNI debe existir activo en esta póliza.</div>
+    </div>
+    <div class="import-zone" onclick="document.getElementById('exc-excel-file').click()">
+      <div style="font-size:36px;margin-bottom:8px;">📂</div>
+      <div class="font-600" style="font-size:15px;color:var(--pri);">Sube tu archivo Excel de exclusiones</div>
+      <input type="file" id="exc-excel-file" accept=".xlsx,.xls,.csv" style="display:none;" onchange="procesarExcelExclusion(event)"/>
+    </div>
+    <div class="flex gap-8 mt-12" style="justify-content:center;">
+      <button class="btn btn-secondary btn-sm" onclick="descargarPlantillaExclusion()">📄 Descargar plantilla exclusiones</button>
+    </div>
+    <div id="exc-import-resultado"></div>
+    <div class="divider"></div>
+    ` : ''}
+
+    ${!lista.length ? `<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-text">No hay trabajadores activos. Nada que excluir.</div></div>` : `
+    <div class="fs-title">Exclusión manual</div>
+    <p class="text-xs text-muted mt-12 mb-12">Selecciona un trabajador para excluir. Quedará marcado como excluido pero permanecerá en el histórico.</p>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>DNI</th><th>Nombre</th><th>Tipo trab.</th><th>Sueldo</th><th></th></tr></thead>
+      <tbody>${lista.map(a => `<tr>
+        <td class="td-mono font-bold">${escapeHtml(a.dni)}</td>
+        <td>${escapeHtml(a.nombres)} ${escapeHtml(a.apellido_paterno||a.apellidos||'')}</td>
+        <td class="text-xs">${escapeHtml(a.tipo_trabajador||'—')}</td>
+        <td class="td-mono">${escapeHtml(a.moneda||'S/.')} ${fmtMoney(a.sueldo)}</td>
+        <td><button class="btn btn-danger btn-sm" onclick="abrirExcluir('${a.id}')">Excluir</button></td>
+      </tr>`).join('')}</tbody></table></div>
+    `}
+  `;
+}
+
+function abrirExcluir(aseguradoId){
+  const a = cache.asegurados.find(x => x.id === aseguradoId);
+  if(!a) return;
+  abrirModal(`
+    <div class="modal-title">Excluir a ${escapeHtml(a.nombres)} ${escapeHtml(a.apellido_paterno||a.apellidos||'')}</div>
+    <div class="modal-sub">DNI ${escapeHtml(a.dni)}</div>
+    <div class="form-group">
+      <label class="form-label">Motivo de cese</label>
+      <select class="form-select" id="exc-motivo">${catalogoOptions('motivo_cese')}</select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Fecha de cese</label>
+      <input type="date" class="form-input" id="exc-fecha" value="${new Date().toISOString().slice(0,10)}"/>
+    </div>
+    <div class="modal-ftr">
+      <button class="btn btn-ghost" onclick="cerrarModal()">Cancelar</button>
+      <button class="btn btn-danger" onclick="confirmarExcluir('${aseguradoId}')">Confirmar exclusión</button>
+    </div>
+  `);
+}
+
+async function confirmarExcluir(id){
+  const motivo = document.getElementById('exc-motivo').value;
+  const fecha = document.getElementById('exc-fecha').value;
+  const a = cache.asegurados.find(x => x.id === id);
+  if(!a) return;
+  try{
+    const { error } = await sb.from('asegurados').update({
+      estado: 'excluido',
+      motivo_cese: motivo,
+      fecha_cese: fecha || new Date().toISOString().slice(0,10),
+    }).eq('id', id);
+    if(error) throw error;
+    await registrarMovimiento(detallePolizaId, 'exclusion', { dni: a.dni, nombres: a.nombres, motivo });
+    cerrarModal();
+    toast('Trabajador excluido correctamente');
+  }catch(e){
+    toast('Error: ' + e.message, 'error');
+  }
+}
+
+function procesarExcelExclusion(ev){
+  const file = ev.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try{
+      const data = new Uint8Array(e.target.result);
+      const wb = XLSX.read(data, {type:'array', cellDates:true});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, {defval:'', raw:false});
+      if(!rows.length){ toast('El archivo está vacío','error'); return; }
+
+      const resultado = { excluidos:0, no_encontrados:0, ya_excluidos:0, errores:[] };
+      for(let i=0; i<rows.length; i++){
+        const r = rows[i];
+        const o = {};
+        for(const k of Object.keys(r)) o[k.toLowerCase().replace(/\*/g,'').trim().replace(/\s+/g,'')] = r[k];
+        const dni = String(o.numident || o.dni || '').trim();
+        const motivo = String(o.motivocese || o.motivo || 'Otro').trim();
+        const fecha = parseFechaFlexible(o.fechacese || o.fecha) || new Date().toISOString().slice(0,10);
+        if(!dni){ resultado.errores.push(`Fila ${i+2}: falta NumIdent`); continue; }
+        const ase = cache.asegurados.find(a => a.poliza_id === detallePolizaId && a.dni === dni);
+        if(!ase){ resultado.no_encontrados++; continue; }
+        if(ase.estado === 'excluido'){ resultado.ya_excluidos++; continue; }
+        const { error } = await sb.from('asegurados').update({
+          estado:'excluido', motivo_cese: motivo, fecha_cese: fecha,
+        }).eq('id', ase.id);
+        if(error){ resultado.errores.push(`DNI ${dni}: ${error.message}`); }
+        else resultado.excluidos++;
+      }
+
+      const codigo = await registrarMovimiento(detallePolizaId, 'exclusion', { bulk:true, ...resultado, errores: resultado.errores.slice(0,5) });
+
+      const div = document.getElementById('exc-import-resultado');
+      if(div){
+        div.innerHTML = `<div class="alert alert-success mt-12"><span class="alert-icon">✅</span>
+          <div><strong>Exclusión masiva completada</strong> · <code style="font-size:11px;background:#fff;padding:2px 6px;border-radius:4px;">${codigo}</code>
+            <div class="summary-row">
+              <div class="summary-item"><div class="summary-item-num" style="color:var(--danger);">${resultado.excluidos}</div><div class="summary-item-lbl">Excluidos</div></div>
+              <div class="summary-item"><div class="summary-item-num" style="color:var(--warning);">${resultado.ya_excluidos}</div><div class="summary-item-lbl">Ya excluidos</div></div>
+              <div class="summary-item"><div class="summary-item-num" style="color:var(--info);">${resultado.no_encontrados}</div><div class="summary-item-lbl">No encontrados</div></div>
+              <div class="summary-item"><div class="summary-item-num" style="color:var(--danger);">${resultado.errores.length}</div><div class="summary-item-lbl">Errores</div></div>
+            </div>
+            ${resultado.errores.length ? `<details style="margin-top:10px;"><summary class="text-xs text-muted" style="cursor:pointer;">Ver errores</summary><ul style="margin-top:6px;font-size:12px;">${resultado.errores.map(e=>`<li>${escapeHtml(e)}</li>`).join('')}</ul></details>` : ''}
+          </div></div>`;
+      }
+      toast(`Exclusión: ${resultado.excluidos} excluidos`);
+      ev.target.value = '';
+    }catch(err){
+      toast('Error procesando Excel: ' + err.message, 'error');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   RENOVACIÓN — CREA NUEVA PÓLIZA, HEREDA TRABAJADORES ACTIVOS
+   ═══════════════════════════════════════════════════════════════════════ */
+function htmlTabRenovacion(){
+  const p = cache.polizas.find(x => x.id === detallePolizaId);
+  if(!p) return '';
+  const activos = asegActivosPoliza(p.id);
+  const planilla = planillaTotalPoliza(p.id);
+  const fechaSugerida = p.fecha_fin
+    ? new Date(new Date(p.fecha_fin).getTime() + 86400000).toISOString().slice(0,10)
+    : new Date().toISOString().slice(0,10);
+  return `
+    <div class="alert alert-info"><span class="alert-icon">🔄</span>
+      <div>Vigencia actual: <strong>${fmt(p.fecha_inicio)} → ${fmt(p.fecha_fin)}</strong> (${p.meses_vigencia} meses).<br>
+      La renovación <strong>crea una nueva póliza</strong> que hereda los <strong>${activos.length} trabajador(es) activo(s)</strong> y planilla total de <strong>S/ ${fmtMoney(planilla)}</strong>. La póliza actual quedará marcada como "Renovada".</div>
+    </div>
+
+    <div class="fs-title">Datos de la nueva póliza</div>
+    <div class="form-grid-3 mt-12">
+      <div class="form-group">
+        <label class="form-label">Nuevo número *</label>
+        <input class="form-input" id="rn-numero" value="${escapeHtml(p.numero)}-R${(p.numero_renovacion||0)+1}"/>
+        <div class="form-hint">Sugerido: el actual con sufijo R${(p.numero_renovacion||0)+1}</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Fecha de inicio *</label>
+        <input type="date" class="form-input" id="rn-inicio" value="${fechaSugerida}" oninput="recalcRenov()"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Meses de vigencia *</label>
+        <input type="number" class="form-input" id="rn-meses" value="${p.meses_vigencia||12}" min="1" max="60" oninput="recalcRenov()"/>
+      </div>
+    </div>
+    <div class="form-grid-2">
+      <div class="form-group">
+        <label class="form-label">Nueva fecha fin (auto)</label>
+        <input type="date" class="form-input" id="rn-fin" disabled style="background:#f5f7fc;"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Nueva tasa (%) *</label>
+        <input type="number" step="0.0001" min="0" class="form-input" id="rn-tasa" value="${p.tasa||0}"/>
+        <div class="form-hint">La prima se recalcula automáticamente.</div>
+      </div>
+    </div>
+
+    ${tienePermiso('importar_excel') ? `
+    <div class="divider"></div>
+    <div class="fs-title">Asegurados de la renovación</div>
+    <p class="text-xs text-muted mb-12">Por defecto los <strong>${activos.length} trabajadores activos</strong> de la póliza actual se copian automáticamente. Si subes un Excel, esos serán los nuevos asegurados (reemplazan a los heredados).</p>
+    <div class="import-zone" onclick="document.getElementById('rn-excel-file').click()">
+      <div style="font-size:36px;margin-bottom:8px;">📂</div>
+      <div class="font-600" style="font-size:15px;color:var(--pri);">Subir lista de asegurados (opcional)</div>
+      <input type="file" id="rn-excel-file" accept=".xlsx,.xls,.csv" style="display:none;" onchange="cargarExcelRenovacion(event)"/>
+    </div>
+    <div class="flex gap-8 mt-12" style="justify-content:center;">
+      <button class="btn btn-secondary btn-sm" onclick="descargarPlantillaRenovacion()">📄 Descargar plantilla</button>
+    </div>
+    <div id="rn-asegurados-preview"></div>
+    ` : ''}
+
+    <div class="flex mt-16" style="justify-content:flex-end;">
+      <button class="btn btn-primary" onclick="confirmarRenovacion()">🔄 Crear nueva póliza renovada</button>
+    </div>
+  `;
+}
+
+let rnAsegurados = null;
+
+function cargarExcelRenovacion(ev){
+  const file = ev.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try{
+      const data = new Uint8Array(e.target.result);
+      const wb = XLSX.read(data, {type:'array', cellDates:true});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, {defval:'', raw:false});
+      const lista = [];
+      rows.forEach(r => {
+        const a = mapearFilaMapfre(r);
+        if(a) lista.push(a);
+      });
+      rnAsegurados = lista;
+      const div = document.getElementById('rn-asegurados-preview');
+      const planilla = lista.reduce((s,a) => s + parseFloat(a.sueldo||0), 0);
+      div.innerHTML = `<div class="alert alert-success mt-12">
+        <span class="alert-icon">✅</span>
+        <div><strong>${lista.length} asegurado(s) cargados desde Excel</strong>
+        <div class="summary-row">
+          <div class="summary-item"><div class="summary-item-num" style="color:var(--info);">${lista.length}</div><div class="summary-item-lbl">Trabajadores</div></div>
+          <div class="summary-item"><div class="summary-item-num" style="color:var(--success);">S/ ${fmtMoney(planilla)}</div><div class="summary-item-lbl">Planilla</div></div>
+        </div>
+        <p class="text-xs text-muted mt-8">⚠️ Estos asegurados reemplazarán a los heredados.</p>
+      </div></div>`;
+      ev.target.value = '';
+    }catch(err){
+      toast('Error: ' + err.message, 'error');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function recalcRenov(){
+  const ini = document.getElementById('rn-inicio')?.value;
+  const m = document.getElementById('rn-meses')?.value;
+  const fin = document.getElementById('rn-fin');
+  if(fin && ini && m) fin.value = calcFechaFin(ini, m);
+}
+
+async function confirmarRenovacion(){
+  const numero_nuevo = document.getElementById('rn-numero').value.trim();
+  const ini = document.getElementById('rn-inicio').value;
+  const meses = parseInt(document.getElementById('rn-meses').value, 10);
+  const tasa = parseFloat(document.getElementById('rn-tasa').value || 0);
+  if(!numero_nuevo || !ini || !meses){ toast('Completa los campos obligatorios','error'); return; }
+  if(meses < 1 || meses > 60){ toast('Meses debe estar entre 1 y 60','error'); return; }
+  if(!tasa || tasa <= 0){ toast('La tasa debe ser mayor a 0','error'); return; }
+  if(cache.polizas.some(p => p.numero === numero_nuevo)){
+    toast('Ya existe una póliza con ese número','error'); return;
+  }
+
+  const original = cache.polizas.find(x => x.id === detallePolizaId);
+  if(!original) return;
+
+  let asegurados;
+  if(rnAsegurados && rnAsegurados.length){
+    asegurados = rnAsegurados.map(a => ({ ...a, estado:'activo' }));
+  } else {
+    const activos = asegActivosPoliza(original.id);
+    asegurados = activos.map(a => {
+      const { id, poliza_id, created_at, fecha_cese, motivo_cese, ...rest } = a;
+      return { ...rest, estado:'activo' };
+    });
+  }
+
+  const planilla = asegurados.reduce((s,a) => s + parseFloat(a.sueldo||0), 0);
+  const primaCalculada = planilla * tasa / 100;
+  const fin = calcFechaFin(ini, meses);
+
+  try{
+    const nueva = {
+      numero: numero_nuevo,
+      empresa_id: original.empresa_id,
+      aseguradora: original.aseguradora,
+      tipo: original.tipo,
+      clase_riesgo: original.clase_riesgo,
+      ciiu: original.ciiu,
+      lugar_ejecucion: original.lugar_ejecucion,
+      fecha_inicio: ini,
+      fecha_fin: fin,
+      meses_vigencia: meses,
+      prima_mensual: primaCalculada,
+      tasa,
+      estado: 'vigente',
+      poliza_origen_id: original.id,
+      numero_renovacion: (original.numero_renovacion||0) + 1,
+    };
+    const { data: pol, error } = await sb.from('polizas').insert(nueva).select().single();
+    if(error) throw error;
+
+    if(asegurados.length){
+      const inserts = asegurados.map(a => ({ ...a, poliza_id: pol.id }));
+      const { error: errA } = await sb.from('asegurados').insert(inserts);
+      if(errA) console.error('Error copiando asegurados:', errA);
+    }
+
+    await sb.from('polizas').update({ estado: 'renovada' }).eq('id', original.id);
+
+    await registrarMovimiento(pol.id, 'renovacion', {
+      numero_origen: original.numero,
+      numero_nuevo,
+      meses_vigencia: meses,
+      asegurados_heredados: asegurados.length,
+      planilla, prima: primaCalculada,
+    });
+
+    rnAsegurados = null;
+    toast('Renovación creada. La nueva póliza es ' + numero_nuevo);
+    setTimeout(() => abrirDetallePoliza(pol.id), 300);
+  }catch(e){
+    toast('Error: ' + e.message, 'error');
+  }
+}
+
+/* ── Tab: Historial ── */
+function htmlTabHistorial(){
+  const d = db();
+  const lista = d.movimientos.filter(m => m.poliza_id === detallePolizaId)
+    .sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+  if(!lista.length){
+    return `<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-text">Sin movimientos registrados</div></div>`;
+  }
+  const colores = { creacion:'pill-blue', inclusion:'pill-green', exclusion:'pill-red', renovacion:'pill-orange' };
+  return `<div class="tbl-wrap"><table>
+    <thead><tr><th>Código</th><th>Fecha</th><th>Tipo</th><th>Usuario</th><th>Detalle</th></tr></thead>
+    <tbody>${lista.map(m => {
+      const u = d.usuarios.find(x => x.id === m.usuario_id);
+      return `<tr>
+        <td class="td-mono text-xs"><strong>${escapeHtml(m.codigo||'—')}</strong></td>
+        <td class="td-mono text-xs">${fmtDT(m.created_at)}</td>
+        <td><span class="pill ${colores[m.tipo]||'pill-gray'}">${m.tipo}</span></td>
+        <td>${escapeHtml(u?.nombre||'—')} ${escapeHtml(u?.apellido||'')}</td>
+        <td class="text-xs">${resumenDetalle(m.detalle)}</td>
+      </tr>`;
+    }).join('')}</tbody></table></div>`;
+}
+function resumenDetalle(d){
+  if(!d) return '—';
+  if(d.bulk){
+    if(d.excluidos !== undefined) return `Exclusión Excel: ${d.excluidos} excluidos, ${d.no_encontrados||0} no encontrados`;
+    return `Import Excel: ${d.insertados||0} nuevos, ${d.reactivados||0} reactivados, ${d.duplicados||0} omitidos`;
+  }
+  if(d.numero_nuevo) return `→ ${escapeHtml(d.numero_nuevo)} (${d.meses_vigencia}m, ${d.asegurados_heredados||0} asegurados)`;
+  if(d.dni) return `DNI ${escapeHtml(d.dni)}${d.nombres?' — '+escapeHtml(d.nombres):''}${d.motivo?' ('+escapeHtml(d.motivo)+')':''}`;
+  if(d.numero) return `Póliza ${escapeHtml(d.numero)} — ${escapeHtml(d.aseguradora||'')}${d.asegurados_iniciales?` · ${d.asegurados_iniciales} asegurados`:''}`;
+  return JSON.stringify(d);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   EMPRESAS
+   ═══════════════════════════════════════════════════════════════════════ */
+function renderEmpresas(){
+  if(!isAdmin()) return;
+  const d = db();
+  const wrap = document.getElementById('empresas-tbl-wrap');
+  if(!d.empresas.length){
+    wrap.innerHTML = `<div class="empty-state"><div class="empty-icon">🏢</div><div class="empty-text">Aún no hay empresas. Crea la primera con + Nueva empresa.</div></div>`;
+    return;
+  }
+  wrap.innerHTML = `<table>
+    <thead><tr><th>Razón social</th><th>RUC</th><th>Sede</th><th>Dirección</th><th>Teléfono</th><th>Pólizas</th><th></th></tr></thead>
+    <tbody>${d.empresas.map(e => {
+      const cnt = d.polizas.filter(p => p.empresa_id === e.id).length;
+      return `<tr>
+        <td class="font-bold">${escapeHtml(e.razon_social)}</td>
+        <td class="td-mono">${escapeHtml(e.ruc)}</td>
+        <td>${escapeHtml(e.sede||'—')}</td>
+        <td class="text-xs">${escapeHtml(e.direccion||'—')}</td>
+        <td class="td-mono text-xs">${escapeHtml(e.telefono||'—')}</td>
+        <td>${cnt}</td>
+        <td>
+          <button class="btn btn-ghost btn-sm" onclick="abrirEditarEmpresa('${e.id}')">Editar</button>
+          <button class="btn btn-danger btn-sm" onclick="eliminarEmpresa('${e.id}')">×</button>
+        </td>
+      </tr>`;
+    }).join('')}</tbody></table>`;
+}
+function abrirNuevaEmpresa(){ abrirEmpresaForm(null); }
+function abrirEditarEmpresa(id){
+  const e = db().empresas.find(x => x.id === id);
+  if(e) abrirEmpresaForm(e);
+}
+function abrirEmpresaForm(emp){
+  const e = emp || { razon_social:'', ruc:'', sede:'', direccion:'', telefono:'', email:'' };
+  abrirModal(`
+    <div class="modal-title">${emp?'Editar':'Nueva'} empresa vinculante</div>
+    <div class="modal-sub">${emp?'Modificar datos de la empresa':'Registra una empresa contratante'}</div>
+    <div class="form-grid-2">
+      <div class="form-group">
+        <label class="form-label">Razón social *</label>
+        <input class="form-input" id="emp-razon" value="${escapeHtml(e.razon_social)}"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">RUC *</label>
+        <input class="form-input" id="emp-ruc" value="${escapeHtml(e.ruc)}" maxlength="11"/>
+      </div>
+    </div>
+    <div class="form-grid-2">
+      <div class="form-group">
+        <label class="form-label">Sede</label>
+        <input class="form-input" id="emp-sede" value="${escapeHtml(e.sede||'')}" placeholder="Ej: Lima Centro, Arequipa"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Teléfono</label>
+        <input class="form-input" id="emp-tel" value="${escapeHtml(e.telefono||'')}"/>
+      </div>
+    </div>
+    <div class="form-grid-2">
+      <div class="form-group">
+        <label class="form-label">Dirección</label>
+        <input class="form-input" id="emp-dir" value="${escapeHtml(e.direccion||'')}"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email de contacto</label>
+        <input type="email" class="form-input" id="emp-mail" value="${escapeHtml(e.email||'')}"/>
+      </div>
+    </div>
+    <div class="modal-ftr">
+      <button class="btn btn-ghost" onclick="cerrarModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarEmpresa('${emp?emp.id:''}')">${emp?'Guardar cambios':'Crear empresa'}</button>
+    </div>
+  `);
+}
+async function guardarEmpresa(id){
+  const razon = document.getElementById('emp-razon').value.trim();
+  const ruc = document.getElementById('emp-ruc').value.trim();
+  if(!razon || !ruc){ toast('Razón social y RUC son obligatorios','error'); return; }
+  const dup = cache.empresas.find(e => e.ruc === ruc && e.id !== id);
+  if(dup){ toast('Ya existe una empresa con ese RUC','error'); return; }
+  const data = {
+    razon_social: razon, ruc,
+    sede: document.getElementById('emp-sede').value.trim() || null,
+    telefono: document.getElementById('emp-tel').value.trim() || null,
+    direccion: document.getElementById('emp-dir').value.trim() || null,
+    email: document.getElementById('emp-mail').value.trim() || null,
+  };
+  try{
+    if(id){
+      const { error } = await sb.from('empresas').update(data).eq('id', id);
+      if(error) throw error;
+      toast('Empresa actualizada');
+    } else {
+      const { error } = await sb.from('empresas').insert(data);
+      if(error) throw error;
+      toast('Empresa creada');
+    }
+    cerrarModal();
+  }catch(e){
+    toast('Error: ' + e.message, 'error');
+  }
+}
+async function eliminarEmpresa(id){
+  const e = cache.empresas.find(x => x.id === id);
+  if(!e) return;
+  const cnt = cache.polizas.filter(p => p.empresa_id === id).length;
+  if(!confirm(`¿Eliminar "${e.razon_social}"?${cnt?` Se eliminarán ${cnt} póliza(s) y todos sus asegurados.`:''}`)) return;
+  try{
+    const { error } = await sb.from('empresas').delete().eq('id', id);
+    if(error) throw error;
+    toast('Empresa eliminada');
+  }catch(err){
+    toast('Error: ' + err.message, 'error');
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   USUARIOS
+   ═══════════════════════════════════════════════════════════════════════ */
+function renderUsuarios(){
+  if(!isAdmin()) return;
+  const d = db();
+  const wrap = document.getElementById('usuarios-tbl-wrap');
+  if(!d.usuarios.length){
+    wrap.innerHTML = `<div class="empty-state"><div class="empty-icon">👥</div><div class="empty-text">Sin usuarios</div></div>`;
+    return;
+  }
+  wrap.innerHTML = `<table>
+    <thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Empresa / Sede</th><th>Permisos</th><th>Estado</th><th></th></tr></thead>
+    <tbody>${d.usuarios.map(u => {
+      const e = u.empresa_id ? empresaById(u.empresa_id) : null;
+      const perms = u.permisos || (u.rol==='administrador' ? PERMISOS_DEFAULT_ADMIN : PERMISOS_DEFAULT_EMPRESA);
+      const activosKeys = Object.keys(perms).filter(k => perms[k]);
+      let permLabel = '';
+      if(u.rol === 'administrador'){
+        permLabel = '<span class="pill pill-pri">Todos</span>';
+      } else if(activosKeys.length === 0){
+        permLabel = '<span class="pill pill-gray">Sin permisos</span>';
+      } else if(activosKeys.length === PERMISOS_LIST.length){
+        permLabel = '<span class="pill pill-green">Todos</span>';
+      } else {
+        permLabel = `<span class="pill pill-blue">${activosKeys.length} de ${PERMISOS_LIST.length}</span>`;
+      }
+      return `<tr>
+        <td class="font-bold">${escapeHtml(u.nombre)} ${escapeHtml(u.apellido||'')}</td>
+        <td class="text-xs td-mono">${escapeHtml(u.email)}</td>
+        <td><span class="pill ${u.rol==='administrador'?'pill-pri':'pill-green'}">${u.rol==='administrador'?'Administrador':'Empresa'}</span></td>
+        <td class="text-xs">${e?escapeHtml(e.razon_social):'—'}${u.sede?`<br><span class="text-muted">Sede: ${escapeHtml(u.sede)}</span>`:''}</td>
+        <td>${permLabel}</td>
+        <td><span class="pill ${u.activo?'pill-green':'pill-gray'}">${u.activo?'Activo':'Inactivo'}</span></td>
+        <td>
+          <button class="btn btn-ghost btn-sm" onclick="abrirEditarUsuario('${u.id}')">Editar</button>
+          ${u.id !== session.id ? `
+            <button class="btn btn-ghost btn-sm" onclick="toggleActivoUsuario('${u.id}')">${u.activo?'Inactivar':'Activar'}</button>
+            <button class="btn btn-danger btn-sm" onclick="eliminarUsuario('${u.id}')">×</button>
+          ` : '<span class="text-xs text-muted" style="margin-left:8px;">(tú)</span>'}
+        </td>
+      </tr>`;
+    }).join('')}</tbody></table>`;
+}
+function abrirNuevoUsuario(){ abrirUsuarioForm(null); }
+function abrirEditarUsuario(id){
+  const u = db().usuarios.find(x => x.id === id);
+  if(u) abrirUsuarioForm(u);
+}
+function abrirUsuarioForm(usr){
+  const u = usr || {
+    email:'', password:'', nombre:'', apellido:'',
+    rol:'empresa', sede:'', empresa_id:'', activo:true,
+    permisos: { ...PERMISOS_DEFAULT_EMPRESA },
+  };
+  const permisosActuales = u.permisos || (u.rol === 'administrador' ? PERMISOS_DEFAULT_ADMIN : PERMISOS_DEFAULT_EMPRESA);
+
+  abrirModal(`
+    <div class="modal-title">${usr?'Editar':'Nuevo'} usuario</div>
+    <div class="modal-sub">${usr?'Modifica datos y permisos del usuario':'Crea un nuevo usuario del sistema con permisos granulares'}</div>
+
+    <div class="tabs" style="margin-bottom:1.2rem;">
+      <button class="tab active" onclick="cambiarTabUsuario(event,'datos')">Datos personales</button>
+      <button class="tab" onclick="cambiarTabUsuario(event,'rol')">Rol y empresa</button>
+      <button class="tab" onclick="cambiarTabUsuario(event,'permisos')">Permisos</button>
+    </div>
+
+    <div id="tab-datos" class="tab-pane active">
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label class="form-label">Nombres *</label>
+          <input class="form-input" id="usr-nombre" value="${escapeHtml(u.nombre)}"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Apellidos</label>
+          <input class="form-input" id="usr-apellido" value="${escapeHtml(u.apellido||'')}"/>
+        </div>
+      </div>
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label class="form-label">Correo *</label>
+          <input type="email" class="form-input" id="usr-email" value="${escapeHtml(u.email)}" ${usr?'disabled style="background:#f5f7fc;"':''}/>
+          ${usr?`<div class="form-hint">El correo no se puede cambiar</div>`:''}
+        </div>
+        <div class="form-group">
+          <label class="form-label">Contraseña ${usr?'(dejar vacío para no cambiar)':'*'}</label>
+          <input type="password" class="form-input" id="usr-pass" placeholder="${usr?'••••••••':'mínimo 6 caracteres'}"/>
+        </div>
+      </div>
+    </div>
+
+    <div id="tab-rol" class="tab-pane">
+      <div class="form-group">
+        <label class="form-label">Rol *</label>
+        <select class="form-select" id="usr-rol" onchange="onCambioRol()">
+          <option value="empresa" ${u.rol==='empresa'?'selected':''}>Empresa vinculante</option>
+          <option value="administrador" ${u.rol==='administrador'?'selected':''}>Administrador</option>
+        </select>
+        <div class="form-hint">El administrador siempre tiene todos los permisos. Las empresas tienen permisos configurables.</div>
+      </div>
+      <div id="empresa-fields" class="form-grid-2" style="${u.rol==='empresa'?'':'display:none;'}">
+        <div class="form-group">
+          <label class="form-label">Empresa *</label>
+          <select class="form-select" id="usr-empresa">
+            <option value="">— Selecciona —</option>
+            ${cache.empresas.map(e => `<option value="${e.id}" ${u.empresa_id===e.id?'selected':''}>${escapeHtml(e.razon_social)}</option>`).join('')}
+          </select>
+          ${!cache.empresas.length?'<div class="form-hint" style="color:var(--danger);">⚠️ Primero registra una empresa</div>':''}
+        </div>
+        <div class="form-group">
+          <label class="form-label">Sede asignada</label>
+          <input class="form-input" id="usr-sede" value="${escapeHtml(u.sede||'')}" placeholder="Ej: Lima Centro"/>
+        </div>
+      </div>
+    </div>
+
+    <div id="tab-permisos" class="tab-pane">
+      <div id="perm-admin-notice" style="${u.rol==='administrador'?'':'display:none;'}">
+        <div class="alert alert-info"><span class="alert-icon">ℹ️</span>
+          <div>El rol <strong>Administrador</strong> tiene todos los permisos automáticamente y no se pueden modificar.</div>
+        </div>
+      </div>
+      <div id="perm-empresa-controls" style="${u.rol==='empresa'?'':'display:none;'}">
+        <div class="text-xs text-muted mb-12">Marca los permisos que tendrá este usuario sobre las pólizas de su empresa.</div>
+        <div class="flex gap-8 mb-12">
+          <button type="button" class="btn btn-ghost btn-sm" onclick="presetPermisos('full')">✓ Todos</button>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="presetPermisos('default')">↺ Por defecto</button>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="presetPermisos('readonly')">👁 Solo lectura</button>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="presetPermisos('none')">✗ Ninguno</button>
+        </div>
+        <div id="perm-list">
+          ${PERMISOS_LIST.map(p => `
+            <label style="display:flex;align-items:flex-start;gap:10px;padding:10px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;cursor:pointer;background:#fafbfd;">
+              <input type="checkbox" class="perm-cb" data-perm="${p.key}" ${permisosActuales[p.key]?'checked':''} style="margin-top:2px;"/>
+              <div style="flex:1;">
+                <div class="font-600" style="font-size:13px;">${p.label}</div>
+                <div class="text-xs text-muted">${p.desc}</div>
+              </div>
+            </label>
+          `).join('')}
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-ftr">
+      <button class="btn btn-ghost" onclick="cerrarModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarUsuario('${usr?usr.id:''}')">${usr?'Guardar cambios':'Crear usuario'}</button>
+    </div>
+  `, true);
+}
+
+function cambiarTabUsuario(ev, tab){
+  document.querySelectorAll('.modal .tab').forEach(t => t.classList.remove('active'));
+  ev.target.classList.add('active');
+  document.querySelectorAll('.modal .tab-pane').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+}
+
+function onCambioRol(){
+  const rol = document.getElementById('usr-rol').value;
+  document.getElementById('empresa-fields').style.display = rol==='empresa'?'':'none';
+  document.getElementById('perm-admin-notice').style.display = rol==='administrador'?'':'none';
+  document.getElementById('perm-empresa-controls').style.display = rol==='empresa'?'':'none';
+  // Si pasó a empresa y no había permisos, aplicar defaults
+  if(rol === 'empresa'){
+    const cbs = document.querySelectorAll('.perm-cb');
+    const algunoMarcado = Array.from(cbs).some(cb => cb.checked);
+    if(!algunoMarcado) presetPermisos('default');
+  }
+}
+
+function presetPermisos(tipo){
+  const presets = {
+    full: PERMISOS_DEFAULT_ADMIN,
+    default: PERMISOS_DEFAULT_EMPRESA,
+    readonly: { ver_polizas:true, ver_primas:true, exportar_reportes:true,
+      crear_polizas:false, renovar_polizas:false, incluir_trabajadores:false,
+      excluir_trabajadores:false, importar_excel:false },
+    none: {},
+  };
+  const p = presets[tipo] || {};
+  document.querySelectorAll('.perm-cb').forEach(cb => {
+    cb.checked = !!p[cb.dataset.perm];
+  });
+}
+
+async function guardarUsuario(id){
+  const nombre = document.getElementById('usr-nombre').value.trim();
+  const apellido = document.getElementById('usr-apellido').value.trim();
+  const email = document.getElementById('usr-email').value.trim().toLowerCase();
+  const pass = document.getElementById('usr-pass').value;
+  const rol = document.getElementById('usr-rol').value;
+  const empresa_id = rol==='empresa' ? (document.getElementById('usr-empresa').value || null) : null;
+  const sede = rol==='empresa' ? document.getElementById('usr-sede').value.trim() : null;
+
+  if(!nombre || !email){ toast('Nombre y correo son obligatorios','error'); return; }
+  if(!id && !pass){ toast('La contraseña es obligatoria al crear','error'); return; }
+  if(pass && pass.length < 6){ toast('La contraseña debe tener al menos 6 caracteres','error'); return; }
+  if(rol==='empresa' && !empresa_id){ toast('Selecciona una empresa','error'); return; }
+
+  // Recolectar permisos
+  let permisos;
+  if(rol === 'administrador'){
+    permisos = { ...PERMISOS_DEFAULT_ADMIN };
+  } else {
+    permisos = {};
+    document.querySelectorAll('.perm-cb').forEach(cb => {
+      permisos[cb.dataset.perm] = cb.checked;
+    });
+  }
+
+  try{
+    if(!id){
+      if(cache.usuarios.some(u => u.email.toLowerCase() === email)){
+        toast('Ya existe un usuario con ese correo','error'); return;
+      }
+      const { error } = await sb.from('usuarios').insert({
+        email, password: pass, nombre, apellido: apellido || null,
+        rol, empresa_id, sede, activo: true, permisos,
+      });
+      if(error) throw error;
+      toast('Usuario creado correctamente');
+    } else {
+      const upd = {
+        nombre, apellido: apellido || null,
+        rol, empresa_id, sede, permisos,
+      };
+      if(pass) upd.password = pass;
+      const { error } = await sb.from('usuarios').update(upd).eq('id', id);
+      if(error) throw error;
+      toast('Usuario actualizado');
+    }
+    cerrarModal();
+  }catch(e){
+    toast('Error: ' + e.message, 'error');
+  }
+}
+async function toggleActivoUsuario(id){
+  const u = cache.usuarios.find(x => x.id === id);
+  if(!u || u.id === session.id) return;
+  try{
+    const { error } = await sb.from('usuarios').update({ activo: !u.activo }).eq('id', id);
+    if(error) throw error;
+    toast(`Usuario ${!u.activo?'activado':'inactivado'}`);
+  }catch(e){
+    toast('Error: ' + e.message, 'error');
+  }
+}
+async function eliminarUsuario(id){
+  if(id === session.id){ toast('No puedes eliminar tu propio usuario','error'); return; }
+  const u = cache.usuarios.find(x => x.id === id);
+  if(!u) return;
+  if(!confirm(`¿Eliminar el usuario ${u.nombre} (${u.email})?`)) return;
+  try{
+    const { error } = await sb.from('usuarios').delete().eq('id', id);
+    if(error) throw error;
+    toast('Usuario eliminado');
+  }catch(e){
+    toast('Error: ' + e.message, 'error');
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   REFRESH GLOBAL
+   ═══════════════════════════════════════════════════════════════════════ */
+function refreshAll(){
+  if(!session) return;
+  if(!cache.loaded) return;
+  if(currentView === 'dashboard') renderDashboard();
+  else if(currentView === 'polizas'){
+    if(detallePolizaId && document.getElementById('polizas-detalle').style.display !== 'none'){
+      renderDetallePoliza();
+    } else {
+      renderPolizas();
+    }
+  }
+  else if(currentView === 'empresas') renderEmpresas();
+  else if(currentView === 'usuarios') renderUsuarios();
+  else if(currentView === 'datos') renderDatos();
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   DATOS MAESTROS (catálogos)
+   ═══════════════════════════════════════════════════════════════════════ */
+const DATOS_TIPOS = [
+  {v:'aseguradora',l:'Aseguradoras'},
+  {v:'tipo_sctr',l:'Tipos SCTR'},
+  {v:'tipo_trabajador',l:'Tipos de trabajador'},
+  {v:'clase_riesgo',l:'Clases de riesgo'},
+  {v:'tipo_identificacion',l:'Tipos de identificación'},
+  {v:'sexo',l:'Sexo'},
+  {v:'estado_civil',l:'Estado civil'},
+  {v:'moneda',l:'Monedas'},
+  {v:'pais',l:'Países'},
+  {v:'cargo',l:'Cargos'},
+  {v:'sede',l:'Sedes'},
+  {v:'motivo_cese',l:'Motivos de cese'},
+];
+let datosTipoActual = 'aseguradora';
+
+function renderDatos(){
+  if(!isAdmin()) return;
+  const tabsEl = document.getElementById('datos-tabs');
+  tabsEl.innerHTML = DATOS_TIPOS.map(t =>
+    `<button class="tab ${datosTipoActual===t.v?'active':''}" onclick="setDatosTipo('${t.v}')">${escapeHtml(t.l)}</button>`
+  ).join('');
+
+  const lista = (cache.catalogos || [])
+    .filter(c => c.tipo === datosTipoActual)
+    .sort((a,b) => (a.orden||0) - (b.orden||0) || a.valor.localeCompare(b.valor));
+
+  const cont = document.getElementById('datos-tab-content');
+  const tipoLbl = DATOS_TIPOS.find(t => t.v === datosTipoActual)?.l || datosTipoActual;
+  cont.innerHTML = `
+    <div class="flex" style="justify-content:space-between;align-items:center;margin:16px 0;">
+      <div>
+        <strong>${escapeHtml(tipoLbl)}</strong>
+        <div class="text-xs text-muted">${lista.length} valor(es)</div>
+      </div>
+      <button class="btn btn-acc btn-sm" onclick="abrirNuevoValorCatalogo()">+ Agregar valor</button>
+    </div>
+    ${!lista.length
+      ? `<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-text">Sin valores en este catálogo.</div></div>`
+      : `<div class="tbl-wrap"><table>
+          <thead><tr><th>Valor</th><th>Orden</th><th>Estado</th><th></th></tr></thead>
+          <tbody>${lista.map(c => `<tr>
+            <td class="font-600">${escapeHtml(c.valor)}</td>
+            <td class="td-mono text-xs">${c.orden||0}</td>
+            <td><span class="pill ${c.activo?'pill-green':'pill-gray'}">${c.activo?'Activo':'Inactivo'}</span></td>
+            <td>
+              <button class="btn btn-ghost btn-sm" onclick="abrirEditarValorCatalogo('${c.id}')">Editar</button>
+              <button class="btn btn-ghost btn-sm" onclick="toggleActivoCatalogo('${c.id}')">${c.activo?'Inactivar':'Activar'}</button>
+              <button class="btn btn-danger btn-sm" onclick="eliminarValorCatalogo('${c.id}')">×</button>
+            </td>
+          </tr>`).join('')}</tbody></table></div>`
+    }
+  `;
+}
+
+function setDatosTipo(t){ datosTipoActual = t; renderDatos(); }
+
+function abrirNuevoValorCatalogo(){ abrirValorCatalogoForm(null); }
+function abrirEditarValorCatalogo(id){
+  const c = cache.catalogos.find(x => x.id === id);
+  if(c) abrirValorCatalogoForm(c);
+}
+function abrirValorCatalogoForm(cat){
+  const c = cat || { valor:'', orden: 0, activo: true };
+  const tipoLbl = DATOS_TIPOS.find(t => t.v === datosTipoActual)?.l || datosTipoActual;
+  abrirModal(`
+    <div class="modal-title">${cat?'Editar':'Nuevo'} valor</div>
+    <div class="modal-sub">Catálogo: <strong>${escapeHtml(tipoLbl)}</strong></div>
+    <div class="form-group">
+      <label class="form-label">Valor *</label>
+      <input class="form-input" id="cat-valor" value="${escapeHtml(c.valor)}" placeholder="Ej: Operario"/>
+    </div>
+    <div class="form-grid-2">
+      <div class="form-group">
+        <label class="form-label">Orden</label>
+        <input type="number" class="form-input" id="cat-orden" value="${c.orden||0}"/>
+        <div class="form-hint">Menor número aparece primero</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Estado</label>
+        <select class="form-select" id="cat-activo">
+          <option value="true" ${c.activo?'selected':''}>Activo</option>
+          <option value="false" ${!c.activo?'selected':''}>Inactivo</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-ftr">
+      <button class="btn btn-ghost" onclick="cerrarModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarValorCatalogo('${cat?cat.id:''}')">${cat?'Guardar':'Crear'}</button>
+    </div>
+  `);
+}
+async function guardarValorCatalogo(id){
+  const valor = document.getElementById('cat-valor').value.trim();
+  const orden = parseInt(document.getElementById('cat-orden').value || 0, 10);
+  const activo = document.getElementById('cat-activo').value === 'true';
+  if(!valor){ toast('El valor es obligatorio','error'); return; }
+  try{
+    if(id){
+      const { error } = await sb.from('catalogos').update({ valor, orden, activo }).eq('id', id);
+      if(error) throw error;
+      toast('Valor actualizado');
+    } else {
+      const dup = cache.catalogos.find(c => c.tipo === datosTipoActual && c.valor === valor);
+      if(dup){ toast('Ya existe ese valor en el catálogo','error'); return; }
+      const { error } = await sb.from('catalogos').insert({ tipo: datosTipoActual, valor, orden, activo });
+      if(error) throw error;
+      toast('Valor agregado');
+    }
+    cerrarModal();
+  }catch(e){
+    toast('Error: ' + e.message, 'error');
+  }
+}
+async function toggleActivoCatalogo(id){
+  const c = cache.catalogos.find(x => x.id === id);
+  if(!c) return;
+  try{
+    const { error } = await sb.from('catalogos').update({ activo: !c.activo }).eq('id', id);
+    if(error) throw error;
+    toast(`Valor ${!c.activo?'activado':'inactivado'}`);
+  }catch(e){ toast('Error: ' + e.message, 'error'); }
+}
+async function eliminarValorCatalogo(id){
+  const c = cache.catalogos.find(x => x.id === id);
+  if(!c) return;
+  if(!confirm(`¿Eliminar "${c.valor}" del catálogo?`)) return;
+  try{
+    const { error } = await sb.from('catalogos').delete().eq('id', id);
+    if(error) throw error;
+    toast('Valor eliminado');
+  }catch(e){ toast('Error: ' + e.message, 'error'); }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   ARRANQUE
+   ═══════════════════════════════════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', async () => {
+  loadSession();
+  if(session){
+    // Verificar que el usuario aún exista y esté activo (consulta a Supabase)
+    try{
+      const { data, error } = await sb.from('usuarios').select('*').eq('id', session.id).limit(1);
+      if(error) throw error;
+      const u = data && data[0];
+      if(u && u.activo){
+        // Actualizar permisos por si cambiaron
+        session.permisos = u.permisos || (u.rol === 'administrador' ? PERMISOS_DEFAULT_ADMIN : PERMISOS_DEFAULT_EMPRESA);
+        await enterApp();
+      } else {
+        clearSession();
+        showPage('pg-login');
+      }
+    }catch(e){
+      console.error(e);
+      // Sin conexión: aún así intentar entrar con cache
+      toast('Conectando con el servidor...', 'info');
+      await enterApp();
+    }
+  } else {
+    showPage('pg-login');
+  }
+
+  document.getElementById('l-pass').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+  document.getElementById('l-user').addEventListener('keydown', e => { if(e.key==='Enter') document.getElementById('l-pass').focus(); });
+  document.addEventListener('keydown', e => { if(e.key==='Escape') cerrarModal(); });
+});
+</script>
+</body>
+</html>
